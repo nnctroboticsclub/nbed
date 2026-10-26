@@ -1,4 +1,4 @@
-nbed v0.6.1
+v0.6.1
 
 - リポジトリ名とライブラリ名を Nbed から nbed に統一
 - library.json に小文字のリポジトリ URL を追加

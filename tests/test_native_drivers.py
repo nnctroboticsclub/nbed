@@ -28,6 +28,7 @@ class NativeDriverTests(unittest.TestCase):
         (directory / header).write_text(f'#include "{stub}"\n', encoding="utf-8")
       executable = directory / f"{family}-test.exe"
       drivers = {"spi": ("spi", "pin_mapper"),
+                 "exti": ("interrupt_in", "gpio", "pin_mapper"),
                  "f3_pwm": ("pwm", "timer_reservation", "pin_mapper"),
                  "pwm_outputs": ("pwm", "timer_reservation", "pin_mapper"),
                  "f7_clock": ("clock", "time"),
@@ -52,6 +53,15 @@ class NativeDriverTests(unittest.TestCase):
 
   def test_f3_drivers(self):
     self.run_family("f3", "STM32F303x8")
+
+  def test_f3_exti(self):
+    self.run_family("f3", "STM32F303x8", "exti")
+
+  def test_f4_exti(self):
+    self.run_family("f4", "STM32F446xx", "exti")
+
+  def test_f7_exti(self):
+    self.run_family("f7", "STM32F767xx", "exti")
 
   def test_f4_drivers(self):
     self.run_family("f4", "STM32F446xx")

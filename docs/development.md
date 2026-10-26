@@ -80,6 +80,9 @@ pio device monitor -e f4-blink
 | `f3-pwm-complementary` | F303K8 の TIM15 CH1/CH1N（PA2/PA1） |
 | `f4-pwm-complementary` | F446RE の TIM1 CH1/CH1N（PA8/PA7） |
 | `f7-pwm-complementary` | F767ZI の TIM1 CH1/CH1N（PE9/PE8） |
+| `f3-exti-test` | F303K8 の PA0 入力・EXTI 累計・コールバック |
+| `f4-exti-test` | F446RE の PA0 入力・EXTI 累計・コールバック |
+| `f7-exti-test` | F767ZI の PA0 入力・EXTI 累計・コールバック |
 
 F303K8 の配線・クロック・ピン表は [F303K8 ガイド](f303k8.md)を参照してください。
 F767ZI の設定・ピン表・検証条件は [F767ZI ガイド](f767zi.md)を参照してください。
@@ -94,10 +97,10 @@ UART・CAN・アナログ入力などの例には、それぞれに合う配線�
 サンプルのピン指定と [ライブラリガイド](../README.md)を確認してから書き込んでください。
 `00-f4-all-test` と `04-f4-uart-test` の `NBED_NO_DEFAULT_SERIAL` は移行元から引き継いでいます。
 
-全19環境をビルドするには、既定環境を上書きして実行します。
+全22環境をビルドするには、既定環境を上書きして実行します。
 
 ```sh
-pio run -e f4-blink -e 00-f4-all-test -e 01-f4-digital-test -e 02-f4-analog-test -e 03-f4-pwm-test -e 04-f4-uart-test -e 05-f4-can-test -e 06-f4-nbed-example -e f3-blink -e f3-all-test -e f3-pwm-test -e f4-spi-test -e f3-spi-test -e f7-blink -e f7-all-test -e f7-spi-test -e f3-pwm-complementary -e f4-pwm-complementary -e f7-pwm-complementary
+pio run -e f4-blink -e 00-f4-all-test -e 01-f4-digital-test -e 02-f4-analog-test -e 03-f4-pwm-test -e 04-f4-uart-test -e 05-f4-can-test -e 06-f4-nbed-example -e f3-blink -e f3-all-test -e f3-pwm-test -e f4-spi-test -e f3-spi-test -e f7-blink -e f7-all-test -e f7-spi-test -e f3-pwm-complementary -e f4-pwm-complementary -e f7-pwm-complementary -e f3-exti-test -e f4-exti-test -e f7-exti-test
 ```
 
 これらは実機確認用プログラムです。ビルドの成功だけでは実機の動作確認は完了しません。
@@ -117,6 +120,8 @@ python -m unittest discover -s tests -v
 環境変数 `CXX` で指定できます。コンパイラがない場合は、そのテストだけスキップされます。
 Windows のアプリ制御が生成した実行ファイルを拒否する場合も、理由を表示して実行だけ
 スキップします。数値計算の `static_assert` はコンパイル時に検証されます。
+EXTI では全16ラインのハンドラー、同番号の重複、共有 IRQ と優先度、同時保留、停止・破棄・再開、
+コールバックと保留ビット、割り込み許可状態の復元を確認します。[EXTI ガイド](exti.md)に使用例があります。
 HAL を小さな代替実装に置き換え、全ピン値の判定、GPIO、タイマの競合、PWM/I²C の
 計算、計時の割り込みと周回、UART のまとめ送り・分割・エラー、SPI のモード・分周・
 ピン設定・バッファ境界・所有権・送受信とエラーを確認します。
@@ -206,7 +211,8 @@ pio pkg pack . --output build/nbed.tar.gz
 2026年10月23日に、リポジトリ名とライブラリ名を `Nbed` から `nbed` に変更しました。
 GitHub 上の既存リポジトリをリネームし、コミット履歴・ブランチ・タグ・リリースを引き継いでいます。
 利用側の `lib_deps` と既存の clone の接続先は `https://github.com/nnctroboticsclub/nbed.git` に更新してください。
-過去のリリース文書と移行時の検証記録は、当時の名称・パスを残しています。
+過去のリリース文書は GitHub の公開本文を基に、見出しをリリース名へ揃えています。
+当時の製品名・設定・検証結果は履歴として残しています。
 
 ## Nbed-dev からの移行
 

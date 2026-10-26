@@ -48,10 +48,36 @@ enum {
   GPIO_AF8_USART6
 };
 
+inline constexpr uint32_t GPIO_MODE_IT_RISING = 0x101;
+inline constexpr uint32_t GPIO_MODE_IT_FALLING = 0x102;
+inline constexpr uint32_t GPIO_MODE_IT_RISING_FALLING = 0x103;
+inline uint32_t exti_pending{}, exti_mask{}, exti_rising{}, exti_falling{};
+inline uint32_t primask{};
+#define __NVIC_PRIO_BITS 4
+#define __HAL_RCC_SYSCFG_CLK_ENABLE() ((void)0)
+#define __HAL_GPIO_EXTI_GET_IT(mask) (exti_pending & (mask))
+#define __HAL_GPIO_EXTI_CLEAR_IT(mask) (exti_pending &= ~(mask))
+inline uint32_t __get_PRIMASK() { return primask; }
+inline void __disable_irq() { primask = 1; }
+inline void __set_PRIMASK(uint32_t mask) { primask = mask; }
+
 inline std::vector<std::pair<GPIO_TypeDef*, GPIO_InitTypeDef>> gpio_inits;
 
 inline void HAL_GPIO_Init(GPIO_TypeDef* port, GPIO_InitTypeDef* config) {
   gpio_inits.emplace_back(port, *config);
+  if ((config->Mode & 0x100U) != 0) {
+    exti_mask |= config->Pin;
+    exti_rising = (exti_rising & ~config->Pin) |
+                  ((config->Mode & 1U) ? config->Pin : 0);
+    exti_falling = (exti_falling & ~config->Pin) |
+                   ((config->Mode & 2U) ? config->Pin : 0);
+  }
+}
+
+inline void HAL_GPIO_DeInit(GPIO_TypeDef*, uint32_t pin) {
+  exti_mask &= ~pin;
+  exti_rising &= ~pin;
+  exti_falling &= ~pin;
 }
 
 inline void HAL_GPIO_WritePin(GPIO_TypeDef* port, uint16_t pin,
@@ -82,6 +108,8 @@ inline USART_TypeDef usart1, usart2, usart3, uart4, usart6;
 #define __HAL_RCC_USART6_CONFIG(source) ((void)0)
 
 enum IRQn_Type {
+  EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI2_TSC_IRQn, EXTI3_IRQn, EXTI4_IRQn,
+  EXTI9_5_IRQn, EXTI15_10_IRQn,
   USART1_IRQn,
   USART2_IRQn,
   USART3_IRQn,
@@ -258,11 +286,16 @@ inline uint32_t HAL_RCC_GetPCLK2Freq() { return pclk2_hz; }
 
 inline void HAL_UART_IRQHandler(UART_HandleTypeDef*) {}
 
-inline void HAL_NVIC_SetPriority(IRQn_Type, uint32_t, uint32_t) {}
+inline bool irq_enabled[32]{};
+inline uint32_t irq_priority[32]{}, irq_clears[32]{};
+inline void HAL_NVIC_SetPriority(IRQn_Type irq, uint32_t priority, uint32_t) {
+  irq_priority[irq] = priority;
+}
 
-inline void HAL_NVIC_EnableIRQ(IRQn_Type) {}
+inline void HAL_NVIC_EnableIRQ(IRQn_Type irq) { irq_enabled[irq] = true; }
 
-inline void HAL_NVIC_DisableIRQ(IRQn_Type) {}
+inline void HAL_NVIC_DisableIRQ(IRQn_Type irq) { irq_enabled[irq] = false; }
+inline void HAL_NVIC_ClearPendingIRQ(IRQn_Type irq) { ++irq_clears[irq]; }
 
 struct CoreDebug_Type {
   uint32_t DEMCR{};

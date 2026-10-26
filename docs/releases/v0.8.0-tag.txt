@@ -1,4 +1,4 @@
-nbed v0.8.0
+v0.8.0
 
 - F3/F4/F7 の PWM に N単独・CHx/CHxN のペア出力を追加
 - HAL の極性・アイドル状態・デッドタイム・OSSR/OSSI 設定に対応

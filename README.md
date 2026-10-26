@@ -1,6 +1,6 @@
 # nbed
 
-nbed は、**STM32シリーズ** で GPIO、ADC、PWM、I²C、SPI、UART、CAN、
+nbed は、**STM32シリーズ** で GPIO、EXTI、ADC、PWM、I²C、SPI、UART、CAN、
 エンコーダを扱うための C++ ライブラリです。STM32 HAL の初期化手順を隠しつつ、使用する
 タイマ・通信機能・ピンをコードに明示して、間違った組み合わせは `Initialize()` の失敗として
 検出します。
@@ -9,8 +9,8 @@ nbed は、**STM32シリーズ** で GPIO、ADC、PWM、I²C、SPI、UART、CAN�
 F446RE 向けです。F303K8 の設定・ピン表・実機確認手順は
 [F303K8 ガイド](docs/f303k8.md)を参照してください。
 F767ZI の設定・対応ピン・キャッシュとメモリ配置は [F767ZI ガイド](docs/f767zi.md)にあります。
-v0.8.0 はプレリリースです。正規版への移行判断は [v1.0.0 の公開評価](docs/stability.md)を参照してください。
-今回の変更内容と確認結果は [v0.8.0 リリースノート](docs/releases/v0.8.0.md)にあります。
+v0.9.0 はプレリリースです。変更内容と検証範囲は
+[v0.9.0 リリースノート](docs/releases/v0.9.0.md)にあります。
 
 初心者はまず `#include "nbed.h"` と `System::Initialize()` だけ覚えれば大丈夫です。  
 こちらの [サンプル](#最初に動かす) にチュートリアルとしてLチカの例があります。
@@ -29,6 +29,7 @@ v0.8.0 はプレリリースです。正規版への移行判断は [v1.0.0 の�
   - [GPIO（LED・ボタン）](#gpioledボタン)
     - [出力: LED を点灯する](#出力-led-を点灯する)
     - [入力: スイッチを読む](#入力-スイッチを読む)
+  - [外部割り込み（EXTI）](#外部割り込みexti)
   - [アナログ入力（ADC）](#アナログ入力adc)
   - [PWM（サーボ・モータドライバ）](#pwmサーボモータドライバ)
     - [PWM で特に重要な制約](#pwm-で特に重要な制約)
@@ -203,6 +204,27 @@ DigitalIn switch_input(kPB1, GpioPull::kUp);
 ```cpp
 led = button;  // button の現在の値を LED へ出力
 ```
+
+## 外部割り込み（EXTI）
+
+`InterruptIn` は入力の立上り・立下り・両エッジを EXTI で検出します。短いパルスが
+メインループの読取り前に戻っても、`GetEdgeCount()` の変化から検知できます。
+F303K8・F446RE・F767ZI で同じ API を使用できます。
+
+```cpp
+InterruptIn sensor(kPA0, InterruptEdge::kBoth, GpioPull::kUp);
+if (!sensor.Initialize()) {
+  System::ErrorHandler();
+}
+
+const uint32_t edges = sensor.GetEdgeCount();  // ISRで処理したイベントの累計
+const bool high = sensor.Read();              // 現在の入力レベル
+```
+
+GPIO の末尾番号が同じピンは同時に使用できません（PA0 と PB0 はともに EXTI0）。
+F446RE の5入力には PA0 / PA1 / PA4 / PA8 / PA9 を使えます。
+`Stop()` またはオブジェクトの破棄でラインを解放します。
+コールバック、共有 IRQ の優先度、SW-420 の移行例、実機試験は [EXTI ガイド](docs/exti.md)を参照してください。
 
 ## アナログ入力（ADC）
 
@@ -721,7 +743,10 @@ PWM と CAN の実際の周波数はクロック設定に依存します。ク�
 
 - 対象 MCU は STM32F446RE、STM32F303K8（LQFP32）、STM32F767ZI（LQFP144）です。
   ほかの STM32 型番は未対応です。F3/F7 の名前空間は `nkrc::nbed::stm32::f3` / `nkrc::nbed::stm32::f7` です。
-- 外部割り込み、ADC DMA、UART DMA、SPI DMA・割り込み転送・スレーブはこの API では提供していません。
+- ADC DMA、UART DMA、SPI DMA・割り込み転送・スレーブはこの API では提供していません。
+- GPIO と異なる周辺機能のピン重複は一律に検出しません。ピンを複数の機能へ割り当てないでください。
+- `AnalogIn::ReadRatio()` は未初期化・変換失敗時にも0を返すため、有効な0 Vと区別できません。
+- I²C と UART の通常送受信は完了まで無期限に待つ場合があります。割り込み内では呼び出さないでください。
 - `Pwm::SendDataDma()` は将来の拡張用 API です。現版ではデータを出力しないため、使用しないで
   ください。
 - I²C、SPI、UART の通常送受信、CAN の `Receive()` はブロッキングです。周期処理を止めたくない場合は
@@ -740,9 +765,11 @@ PWM と CAN の実際の周波数はクロック設定に依存します。ク�
 
 ## バージョン履歴
 
+公開済みの本文と日本時間の公開日は [リリース履歴](docs/releases/README.md)を参照してください。
+
 - v0.1.0 (2026-10-05) : 初版公開
 - v0.2.0 (2026-10-06) : Arduino互換ピンへの対応
-- v0.2.1 (2026-10-07) : nbed.h が include されている場合の clangd の補完の不具合を修正
+- v0.2.1 (2026-10-06) : nbed.h が include されている場合の clangd の補完の不具合を修正
 - v0.3.0 (2026-10-18) : 部内共通名前空間 `nkrc` への移行と開発環境の統合。
   `nbed::interface` を `nkrc::nbed::interface`、`nbed::f4` を
   `nkrc::nbed::stm32::f4`、単位系の `nbed` を `nkrc::nbed` に変更しました。
@@ -765,8 +792,7 @@ PWM と CAN の実際の周波数はクロック設定に依存します。ク�
 - v0.6.0 (2026-10-23) : STM32F767ZI 向けに GPIO、ADC1/ADC3、PWM、I²C、SPI、UART、
   Classic CAN、エンコーダ、計時を追加。216 MHz クロック、F7 HAL 設定・専用リンカ、
   Arduino ピン名、サンプル、回帰テストを整備しました。
-  詳細は [v0.6.0 リリースノート](docs/releases/v0.6.0.md)、
-  [正規版公開の評価](docs/stability.md)を参照してください。
+  詳細は [v0.6.0 リリースノート](docs/releases/v0.6.0.md)を参照してください。
 - v0.6.1 (2026-10-23) : リポジトリ名とライブラリ名を `Nbed` から `nbed` に統一。
   `library.json` にリポジトリ情報を追加し、依存設定・ガイド・VS Code タスク・表示名を更新しました。
   公開 API・名前空間・`NBED_...` マクロは維持しています。
@@ -779,3 +805,7 @@ PWM と CAN の実際の周波数はクロック設定に依存します。ク�
   HAL の極性・アイドル状態・デッドタイム・OSSR/OSSI 設定に対応しました。
   出力設定ガイド、3系列の波形確認用サンプルと回帰テストを追加しています。
   詳細は [v0.8.0 リリースノート](docs/releases/v0.8.0.md)を参照してください。
+- v0.9.0 (2026-10-26) : F3/F4/F7 の外部割り込み入力、イベント累計、コールバックを追加。
+  共有 IRQ とラインの所有権を管理し、3系列のサンプル・回帰テスト・EXTI ガイドを追加しました。
+  GPIO の設定値検証とリリース文書も整理しています。
+  詳細は [v0.9.0 リリースノート](docs/releases/v0.9.0.md)を参照してください。

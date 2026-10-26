@@ -63,7 +63,7 @@ bool DigitalIn::Initialize() {
   if (initialized_) {
     return true;
   }
-  if (!PinMapper::IsValidPin(pin_)) {
+  if (!PinMapper::IsValidPin(pin_) || static_cast<unsigned>(pull_) > 2) {
     return false;
   }
   GPIO_InitTypeDef config{};

@@ -1,4 +1,4 @@
-Nbed v0.4.0
+v0.4.0
 
 - STM32F303K8 向けに GPIO、ADC、PWM、I2C、UART、CAN、エンコーダ、計時を追加
 - MCU 別のビルド設定、サンプル、ピン表を追加
