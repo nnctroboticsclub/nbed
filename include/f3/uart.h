@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include "detail/dma.h"
 #include "interface/pin_names.h"
 #include "interface/uart.h"
 #include "stm32f3xx_hal.h"  // IWYU pragma: export
@@ -27,6 +28,12 @@ class Uart final : public interface::Uart {
   bool Send(interface::UartTxMessage message) override;
   bool Receive(interface::UartRxMessage message) override;
 
+  bool SendDma(interface::UartTxMessage message) override;
+  bool ReceiveDma(interface::UartRxMessage message) override;
+  [[nodiscard]] interface::DmaStatus GetTxDmaStatus() const override;
+  [[nodiscard]] interface::DmaStatus GetRxDmaStatus() const override;
+  void StopDma() override;
+
   bool EnableRxInterrupt() override;
   void SetRxCallback(const interface::UartRxCallback& callback) override;
   void SetConsole() override;
@@ -35,12 +42,23 @@ class Uart final : public interface::Uart {
 
   static void HandleInterrupt(UartPeripheral peripheral);
   static void HandleRxComplete(UART_HandleTypeDef* handle);
+  static void HandleTxComplete(UART_HandleTypeDef* handle);
+  static void HandleError(UART_HandleTypeDef* handle);
 
  private:
   [[nodiscard]] bool IsValidPinPair() const;
   [[nodiscard]] IRQn_Type Irq() const;
   static Uart*& InstanceFor(UartPeripheral peripheral);
   void OnRxComplete();
+
+  static Uart* FindHandle(UART_HandleTypeDef* handle);
+  [[nodiscard]] interface::DmaRequest DmaRequestFor(bool receive) const;
+  detail::Dma tx_dma_;
+  detail::Dma rx_dma_;
+  volatile interface::DmaStatus tx_dma_status_{interface::DmaStatus::kIdle};
+  volatile interface::DmaStatus rx_dma_status_{interface::DmaStatus::kIdle};
+  interface::UartRxMessage rx_dma_buffer_{};
+  bool rx_interrupt_enabled_{false};
 
   UartPeripheral peripheral_;
   interface::PinName rx_;

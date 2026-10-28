@@ -1,17 +1,28 @@
 #pragma once
 
+#include <cstdint>
+
 namespace nkrc::nbed::interface {
 
-class Dma {
- public:
-  Dma() = default;
-  virtual ~Dma() = default;
-  Dma(const Dma&) = delete;
-  Dma& operator=(const Dma&) = delete;
-  Dma(Dma&&) = delete;
-  Dma& operator=(Dma&&) = delete;
+enum class DmaStatus : uint8_t { kIdle, kBusy, kComplete, kError, kAborted };
 
-  virtual void Initialize() = 0;
+enum class DmaRequest : uint8_t {
+  kTim1Update,
+  kTim2Update,
+  kTim3Update,
+  kTim15Update,
+  kTim16Update,
+  kTim17Update,
+  kUsart1Tx,
+  kUsart1Rx,
+  kUsart2Tx,
+  kUsart2Rx,
+  kUsart3Tx,
+  kUsart3Rx,
+  kUart4Tx,
+  kUart4Rx,
+  kUsart6Tx,
+  kUsart6Rx
 };
 
 }  // namespace nkrc::nbed::interface

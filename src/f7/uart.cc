@@ -66,6 +66,7 @@ Uart::Uart(UartPeripheral peripheral, interface::PinName rx,
       interrupt_priority_(interrupt_priority) {}
 
 Uart::~Uart() {
+  StopDma();
   if (!initialized_) {
     return;
   }
@@ -134,7 +135,7 @@ bool Uart::Initialize() {
 }
 
 bool Uart::Send(interface::UartTxMessage message) {
-  return initialized_ &&
+  return initialized_ && tx_dma_status_ != interface::DmaStatus::kBusy &&
          message.size() <= std::numeric_limits<uint16_t>::max() &&
          HAL_UART_Transmit(
              &handle_,
@@ -146,7 +147,8 @@ bool Uart::Send(interface::UartTxMessage message) {
 }
 
 bool Uart::Receive(interface::UartRxMessage message) {
-  return initialized_ &&
+  return initialized_ && !rx_interrupt_enabled_ &&
+         rx_dma_status_ != interface::DmaStatus::kBusy &&
          message.size() <= std::numeric_limits<uint16_t>::max() &&
          HAL_UART_Receive(&handle_, message.data(),
                           static_cast<uint16_t>(message.size()),
@@ -154,7 +156,14 @@ bool Uart::Receive(interface::UartRxMessage message) {
 }
 
 bool Uart::EnableRxInterrupt() {
-  return initialized_ && HAL_UART_Receive_IT(&handle_, &rx_byte_, 1) == HAL_OK;
+  if (!initialized_ || rx_dma_status_ == interface::DmaStatus::kBusy) {
+    return false;
+  }
+  if (HAL_UART_Receive_IT(&handle_, &rx_byte_, 1) != HAL_OK) {
+    return false;
+  }
+  rx_interrupt_enabled_ = true;
+  return true;
 }
 
 void Uart::SetRxCallback(const interface::UartRxCallback& callback) {
@@ -177,30 +186,30 @@ void Uart::HandleInterrupt(UartPeripheral peripheral) {
 }
 
 void Uart::HandleRxComplete(UART_HandleTypeDef* handle) {
-  if (handle == nullptr) {
-    return;
-  }
-  Uart* uart = nullptr;
-  if (handle->Instance == USART2) {
-    uart = Usart2Instance();
-  } else if (handle->Instance == USART3) {
-    uart = Usart3Instance();
-  } else if (handle->Instance == UART4) {
-    uart = Uart4Instance();
-  } else if (handle->Instance == USART6) {
-    uart = Usart6Instance();
-  }
+  Uart* uart = FindHandle(handle);
   if (uart != nullptr) {
     uart->OnRxComplete();
   }
 }
 
 void Uart::OnRxComplete() {
+  if (rx_dma_status_ == interface::DmaStatus::kBusy) {
+    detail::Dma::CompleteReceive(rx_dma_buffer_.data(), rx_dma_buffer_.size());
+    rx_dma_buffer_ = {};
+    rx_dma_status_ = interface::DmaStatus::kComplete;
+    // DMA reception is one-shot; polling status owns the completed buffer.
+    return;
+  }
+  if (!rx_interrupt_enabled_) {
+    return;
+  }
   if (rx_callback_) {
     rx_callback_(interface::UartRxMessage{&rx_byte_, 1});
   }
   (void)EnableRxInterrupt();
 }
+
+#include "detail/uart_dma_impl.h"
 
 bool Uart::IsValidPinPair() const {
   using interface::PinName;
@@ -287,6 +296,14 @@ void USART3_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUsart3); }
 void USART6_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUsart6); }
 
 void UART4_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUart4); }
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart) {
+  Uart::HandleTxComplete(huart);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
+  Uart::HandleError(huart);
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart) {
   Uart::HandleRxComplete(huart);

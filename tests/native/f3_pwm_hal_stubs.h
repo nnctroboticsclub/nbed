@@ -5,7 +5,8 @@
 #include "hal_stubs.h"
 
 struct TIM_TypeDef {
-  uint32_t PSC{}, ARR{};
+  uint32_t PSC{}, ARR{}, CR1{}, CNT{}, DIER{};
+  uint32_t CCR1{}, CCR2{}, CCR3{}, CCR4{};
   std::array<uint32_t, 4> CCR{};
   uint32_t active_channels{};
   uint32_t active_n_channels{};
@@ -189,3 +190,14 @@ inline HAL_StatusTypeDef HAL_TIM_GenerateEvent(TIM_HandleTypeDef*, uint32_t) {
   ((handle)->Instance->PSC = (value))
 #define __HAL_TIM_SET_AUTORELOAD(handle, value) \
   ((handle)->Instance->ARR = (value))
+
+inline constexpr uint32_t TIM_CR1_CEN = 1, TIM_DMA_UPDATE = 256;
+#ifndef CLEAR_BIT
+#define CLEAR_BIT(reg, mask) ((reg) &= ~(mask))
+#endif
+#define __HAL_TIM_ENABLE(handle) ((handle)->Instance->CR1 |= TIM_CR1_CEN)
+#define __HAL_TIM_SET_COUNTER(handle, value) ((handle)->Instance->CNT = (value))
+#define __HAL_TIM_ENABLE_DMA(handle, value) \
+  ((handle)->Instance->DIER |= (value))
+#define __HAL_TIM_DISABLE_DMA(handle, value) \
+  ((handle)->Instance->DIER &= ~(value))

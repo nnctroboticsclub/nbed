@@ -83,6 +83,12 @@ pio device monitor -e f4-blink
 | `f3-exti-test` | F303K8 の PA0 入力・EXTI 累計・コールバック |
 | `f4-exti-test` | F446RE の PA0 入力・EXTI 累計・コールバック |
 | `f7-exti-test` | F767ZI の PA0 入力・EXTI 累計・コールバック |
+| `f3-ws2812b` | F303K8 の PA8、PWM + DMAでWS2812Bを制御 |
+| `f3-uart-dma` | F303K8 のUSART2で32バイトDMA受信・返信 |
+| `f4-ws2812b` | F446RE の PA8、PWM + DMAでWS2812Bを制御 |
+| `f4-uart-dma` | F446RE のUSART2で32バイトDMA受信・返信 |
+| `f7-ws2812b` | F767ZI の PA8、PWM + DMAでWS2812Bを制御 |
+| `f7-uart-dma` | F767ZI のUSART2で32バイトDMA受信・返信 |
 
 F303K8 の配線・クロック・ピン表は [F303K8 ガイド](f303k8.md)を参照してください。
 F767ZI の設定・ピン表・検証条件は [F767ZI ガイド](f767zi.md)を参照してください。
@@ -97,10 +103,10 @@ UART・CAN・アナログ入力などの例には、それぞれに合う配線�
 サンプルのピン指定と [ライブラリガイド](../README.md)を確認してから書き込んでください。
 `00-f4-all-test` と `04-f4-uart-test` の `NBED_NO_DEFAULT_SERIAL` は移行元から引き継いでいます。
 
-全22環境をビルドするには、既定環境を上書きして実行します。
+全28環境をビルドするには、既定環境を上書きして実行します。
 
 ```sh
-pio run -e f4-blink -e 00-f4-all-test -e 01-f4-digital-test -e 02-f4-analog-test -e 03-f4-pwm-test -e 04-f4-uart-test -e 05-f4-can-test -e 06-f4-nbed-example -e f3-blink -e f3-all-test -e f3-pwm-test -e f4-spi-test -e f3-spi-test -e f7-blink -e f7-all-test -e f7-spi-test -e f3-pwm-complementary -e f4-pwm-complementary -e f7-pwm-complementary -e f3-exti-test -e f4-exti-test -e f7-exti-test
+pio run -e f4-blink -e 00-f4-all-test -e 01-f4-digital-test -e 02-f4-analog-test -e 03-f4-pwm-test -e 04-f4-uart-test -e 05-f4-can-test -e 06-f4-nbed-example -e f3-blink -e f3-all-test -e f3-pwm-test -e f4-spi-test -e f3-spi-test -e f7-blink -e f7-all-test -e f7-spi-test -e f3-pwm-complementary -e f4-pwm-complementary -e f7-pwm-complementary -e f3-exti-test -e f4-exti-test -e f7-exti-test -e f3-ws2812b -e f4-ws2812b -e f7-ws2812b -e f3-uart-dma -e f4-uart-dma -e f7-uart-dma
 ```
 
 これらは実機確認用プログラムです。ビルドの成功だけでは実機の動作確認は完了しません。
@@ -132,6 +138,9 @@ HAL 設定値、設定の競合、開始失敗時の解放と別チャンネル�
 相補出力の実機確認用サンプルと設定例は [PWM 出力設定ガイド](pwm.md)にあります。
 F7 ではクロック・Flash 待機数・OverDrive、I²C の HSI16 タイミングと所有権、ADC1/ADC3 の
 独立したチャンネルキャッシュ、DWT のアンロック、USART3/6 と F7 固有の SPI ピンも確認します。
+DMAは資源の予約・全要求の割当て、波形データ・末尾ゼロ、開始失敗・中断・破棄、
+UARTの状態遷移・RXモード排他、F7キャッシュ処理・メモリ範囲も検証します。
+使い方とWS2812Bの配線は [DMA ガイド](dma.md)を参照してください。
 実機での波形・通信確認は別途必要です。
 
 ## VS Code と clangd

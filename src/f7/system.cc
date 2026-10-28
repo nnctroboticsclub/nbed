@@ -31,8 +31,7 @@ void System::Initialize() { Initialize(Clock::Configuration{}); }
 
 void System::Initialize(const Clock::Configuration& configuration) {
   SCB_EnableICache();
-  // D-cache stays at the caller's/reset setting. DMA cache maintenance is not
-  // implemented by this backend; nbed's public transfers use polling/IRQs.
+  // Preserve the caller's D-cache setting; DMA maintains transfer buffers.
   HAL_Init();
   if (!ClockManager::Initialize(configuration)) {
     ErrorHandler();

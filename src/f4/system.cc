@@ -10,7 +10,6 @@
 #include <cstdint>
 
 #include "f4/clock.h"
-#include "f4/dma.h"
 #include "f4/time.h"
 #include "f4/uart.h"
 #include "logger.h"
@@ -36,7 +35,6 @@ void System::Initialize(const Clock::Configuration& configuration) {
     ErrorHandler();
   }
   Time::Initialize();
-  DmaManager::Initialize();
 
 #ifndef NBED_NO_DEFAULT_SERIAL
   static Uart uart(UartPeripheral::kUsart2, interface::PinName::kPA3,

@@ -22,7 +22,7 @@ class NativeDriverTests(unittest.TestCase):
                      f"stm32{family}xx_hal_rcc.h", f"stm32{family}xx_hal_uart.h",
                      f"stm32{family}xx_hal_spi.h", f"stm32{family}xx_hal_adc.h",
                      f"stm32{family}xx_hal_i2c.h", f"stm32{family}xx_hal_pwr_ex.h"):
-        stub = ("f3_pwm_hal_stubs.h" if suite in ("f3_pwm", "pwm_outputs") else
+        stub = ("f3_pwm_hal_stubs.h" if suite in ("f3_pwm", "pwm_outputs", "dma") else
                 "f7_hal_stubs.h" if suite in ("f7_clock", "f7_peripherals") else
                 "hal_stubs.h")
         (directory / header).write_text(f'#include "{stub}"\n', encoding="utf-8")
@@ -34,7 +34,11 @@ class NativeDriverTests(unittest.TestCase):
                  "f7_clock": ("clock", "time"),
                  "f7_peripherals": ("i2c", "analog_in", "pin_mapper")}.get(
                      suite, ("gpio", "pin_mapper", "time", "timer_reservation", "uart"))
+      if suite == "dma":
+        drivers = ("pwm", "uart", "timer_reservation", "pin_mapper")
       sources = [ROOT / "src" / family / f"{name}.cc" for name in drivers]
+      if "pwm" in drivers or "uart" in drivers:
+        sources.append(ROOT / "src" / family / "dma.cc")
       command = [compiler, "-std=c++23", "-Wall", "-Wextra", "-Werror", f"-D{macro}",
                  "-I", str(directory), "-I", str(ROOT / "tests/native"),
                  "-I", str(ROOT / "include"),
@@ -50,6 +54,15 @@ class NativeDriverTests(unittest.TestCase):
                         "Windows application control blocked execution (4551)")
         raise
       self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+  def test_f3_dma(self):
+    self.run_family("f3", "STM32F303x8", "dma")
+
+  def test_f4_dma(self):
+    self.run_family("f4", "STM32F446xx", "dma")
+
+  def test_f7_dma(self):
+    self.run_family("f7", "STM32F767xx", "dma")
 
   def test_f3_drivers(self):
     self.run_family("f3", "STM32F303x8")

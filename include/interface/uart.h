@@ -4,6 +4,8 @@
 #include <functional>
 #include <span>
 
+#include "interface/dma.h"
+
 namespace nkrc::nbed::interface {
 
 using UartTxMessage = std::span<const uint8_t>;
@@ -23,6 +25,12 @@ class Uart {
 
   virtual bool Send(UartTxMessage message) = 0;
   virtual bool Receive(UartRxMessage message) = 0;
+
+  virtual bool SendDma(UartTxMessage message) = 0;
+  virtual bool ReceiveDma(UartRxMessage message) = 0;
+  [[nodiscard]] virtual DmaStatus GetTxDmaStatus() const = 0;
+  [[nodiscard]] virtual DmaStatus GetRxDmaStatus() const = 0;
+  virtual void StopDma() = 0;
 
   virtual bool EnableRxInterrupt() = 0;
   virtual void SetRxCallback(const UartRxCallback& callback) = 0;

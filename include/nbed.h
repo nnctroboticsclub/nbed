@@ -9,6 +9,7 @@
 
 // インターフェース
 #include "interface/can.h"           // IWYU pragma: export
+#include "interface/dma.h"           // IWYU pragma: export
 #include "interface/encoder.h"       // IWYU pragma: export
 #include "interface/i2c.h"           // IWYU pragma: export
 #include "interface/interrupt_in.h"  // IWYU pragma: export
@@ -22,8 +23,10 @@ using nkrc::nbed::interface::CanFrameType;
 using nkrc::nbed::interface::CanMessage;
 using nkrc::nbed::interface::CanRxCallback;
 using nkrc::nbed::interface::CanRxFilter;
-using nkrc::nbed::interface::I2CMessage;
+using nkrc::nbed::interface::DmaRequest;
+using nkrc::nbed::interface::DmaStatus;
 using nkrc::nbed::interface::GpioInterruptCallback;
+using nkrc::nbed::interface::I2CMessage;
 using nkrc::nbed::interface::InterruptEdge;
 using nkrc::nbed::interface::SpiBitOrder;
 using nkrc::nbed::interface::SpiMode;
@@ -42,6 +45,7 @@ using namespace std::chrono_literals;
 #include "f4/analog_in.h"     // IWYU pragma: export
 #include "f4/can.h"           // IWYU pragma: export
 #include "f4/clock.h"         // IWYU pragma: export
+#include "f4/dma.h"           // IWYU pragma: export
 #include "f4/encoder.h"       // IWYU pragma: export
 #include "f4/gpio.h"          // IWYU pragma: export
 #include "f4/i2c.h"           // IWYU pragma: export
@@ -87,6 +91,7 @@ inline void SleepFor(uint32_t ms) {
 #include "f3/analog_in.h"     // IWYU pragma: export
 #include "f3/can.h"           // IWYU pragma: export
 #include "f3/clock.h"         // IWYU pragma: export
+#include "f3/dma.h"           // IWYU pragma: export
 #include "f3/encoder.h"       // IWYU pragma: export
 #include "f3/gpio.h"          // IWYU pragma: export
 #include "f3/i2c.h"           // IWYU pragma: export
@@ -132,6 +137,7 @@ inline void SleepFor(uint32_t ms) {
 #include "f7/analog_in.h"     // IWYU pragma: export
 #include "f7/can.h"           // IWYU pragma: export
 #include "f7/clock.h"         // IWYU pragma: export
+#include "f7/dma.h"           // IWYU pragma: export
 #include "f7/encoder.h"       // IWYU pragma: export
 #include "f7/gpio.h"          // IWYU pragma: export
 #include "f7/i2c.h"           // IWYU pragma: export

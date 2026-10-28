@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <span>
 
+#include "interface/dma.h"
+
 namespace nkrc::nbed::interface {
 
 class Pwm {
@@ -20,7 +22,11 @@ class Pwm {
   virtual bool SetFrequencyHz(uint32_t frequency_hz) = 0;
   virtual bool SetDutyCycle(float duty_cycle) = 0;
 
-  virtual void SendDataDma(std::span<const uint32_t> data) = 0;
+  // Raw CCR ticks, ending with two zero entries. Buffer lives until done/abort.
+  virtual bool SendDataDma(std::span<const uint32_t> data) = 0;
+  [[nodiscard]] virtual DmaStatus GetDmaStatus() const = 0;
+  [[nodiscard]] virtual uint64_t GetPeriodTicks() const = 0;
+  virtual void StopDma() = 0;
 
   [[nodiscard]] virtual uint32_t GetFrequencyHz() const = 0;
 

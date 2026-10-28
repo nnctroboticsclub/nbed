@@ -1,6 +1,6 @@
 {
   "name": "nbed",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "nbedは、長岡高専ロボティクス部が2026年に開発したSTM32シリーズ向けのマイコン制御ライブラリです。STM32 HALをより簡単かつ扱いやすく利用できるようにすることを目的として開発されています。",
   "license": "MIT",
   "keywords": [

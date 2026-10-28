@@ -131,3 +131,9 @@ pio run -e f3-pwm-complementary
 [F446RE データシート](https://www.st.com/resource/en/datasheet/stm32f446re.pdf)、
 [F767ZI データシート](https://www.st.com/resource/en/datasheet/stm32f767zi.pdf)、
 [HAL の相補出力・デッドタイム設定](https://github.com/STMicroelectronics/stm32f3xx-hal-driver/blob/master/Src/stm32f3xx_hal_tim_ex.c)。
+
+## DMA 波形転送
+
+v0.10.0から通常のCH出力に `SendDataDma()` を使用できます。
+タイマを占有する単発転送で、CHxN・相補ペアには使用できません。
+WS2812Bの例、戻り値・状態・末尾ゼロ・バッファ寿命は [DMA ガイド](dma.md)を参照してください。

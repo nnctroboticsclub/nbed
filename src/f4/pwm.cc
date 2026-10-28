@@ -16,6 +16,7 @@ namespace nkrc::nbed::stm32::f4 {
 
 struct Pwm::TimerState {
   TIM_HandleTypeDef handle{};
+  Pwm* dma_owner{nullptr};
   uint32_t timer_clock_hz{0};
   uint32_t frequency_hz{0};
   uint32_t dead_time{0};
@@ -136,6 +137,11 @@ bool Pwm::Initialize() {
   }
 
   auto& state = State();
+  if (state.dma_owner != nullptr) {
+    TimerReservation::ReleasePwm(static_cast<uint8_t>(timer_),
+                                 ChannelIndex(channel_));
+    return false;
+  }
   const uint8_t channel_bit = ChannelBit(channel_);
   // CHx and CHxN share one CCR. A paired configuration keeps one owner;
   // separate Pwm objects cannot independently control the same channel.
@@ -204,7 +210,7 @@ bool Pwm::Initialize() {
   GPIO_InitTypeDef gpio{};
   gpio.Mode = GPIO_MODE_AF_PP;
   gpio.Pull = GPIO_NOPULL;
-  gpio.Speed = GPIO_SPEED_FREQ_LOW;
+  gpio.Speed = GPIO_SPEED_FREQ_HIGH;
   gpio.Alternate = IsComplementary(channel_) ? ComplementaryAlternateFunction()
                                              : AlternateFunction();
   if (!PinMapper::ConfigureGpio(pin_, gpio)) {
@@ -268,7 +274,7 @@ bool Pwm::Initialize() {
 }
 
 bool Pwm::SetPulseWidthUs(uint32_t pulse_width_us) {
-  if (!initialized_) {
+  if (!initialized_ || dma_status_ == interface::DmaStatus::kBusy) {
     return false;
   }
   auto& state = State();
@@ -281,7 +287,7 @@ bool Pwm::SetPulseWidthUs(uint32_t pulse_width_us) {
 }
 
 bool Pwm::SetFrequencyHz(uint32_t frequency_hz) {
-  if (frequency_hz == 0) {
+  if (frequency_hz == 0 || dma_status_ == interface::DmaStatus::kBusy) {
     return false;
   }
   if (!initialized_) {
@@ -320,7 +326,8 @@ bool Pwm::SetFrequencyHz(uint32_t frequency_hz) {
 }
 
 bool Pwm::SetDutyCycle(float duty_cycle) {
-  if (!initialized_ || std::isnan(duty_cycle)) {
+  if (!initialized_ || dma_status_ == interface::DmaStatus::kBusy ||
+      std::isnan(duty_cycle)) {
     return false;
   }
   duty_cycle = std::clamp(duty_cycle, 0.0F, 1.0F);
@@ -331,13 +338,14 @@ bool Pwm::SetDutyCycle(float duty_cycle) {
   return true;
 }
 
-void Pwm::SendDataDma(std::span<const uint32_t> data) { (void)data; }
+#include "detail/pwm_dma_impl.h"
 
 uint32_t Pwm::GetFrequencyHz() const {
   return initialized_ ? State().frequency_hz : frequency_hz_;
 }
 
 void Pwm::Stop() {
+  StopDma();
   if (!initialized_) {
     return;
   }

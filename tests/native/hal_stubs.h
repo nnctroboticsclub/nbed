@@ -57,8 +57,11 @@ inline uint32_t primask{};
 #define __HAL_RCC_SYSCFG_CLK_ENABLE() ((void)0)
 #define __HAL_GPIO_EXTI_GET_IT(mask) (exti_pending & (mask))
 #define __HAL_GPIO_EXTI_CLEAR_IT(mask) (exti_pending &= ~(mask))
+
 inline uint32_t __get_PRIMASK() { return primask; }
+
 inline void __disable_irq() { primask = 1; }
+
 inline void __set_PRIMASK(uint32_t mask) { primask = mask; }
 
 inline std::vector<std::pair<GPIO_TypeDef*, GPIO_InitTypeDef>> gpio_inits;
@@ -67,10 +70,10 @@ inline void HAL_GPIO_Init(GPIO_TypeDef* port, GPIO_InitTypeDef* config) {
   gpio_inits.emplace_back(port, *config);
   if ((config->Mode & 0x100U) != 0) {
     exti_mask |= config->Pin;
-    exti_rising = (exti_rising & ~config->Pin) |
-                  ((config->Mode & 1U) ? config->Pin : 0);
-    exti_falling = (exti_falling & ~config->Pin) |
-                   ((config->Mode & 2U) ? config->Pin : 0);
+    exti_rising =
+        (exti_rising & ~config->Pin) | ((config->Mode & 1U) ? config->Pin : 0);
+    exti_falling =
+        (exti_falling & ~config->Pin) | ((config->Mode & 2U) ? config->Pin : 0);
   }
 }
 
@@ -108,13 +111,42 @@ inline USART_TypeDef usart1, usart2, usart3, uart4, usart6;
 #define __HAL_RCC_USART6_CONFIG(source) ((void)0)
 
 enum IRQn_Type {
-  EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI2_TSC_IRQn, EXTI3_IRQn, EXTI4_IRQn,
-  EXTI9_5_IRQn, EXTI15_10_IRQn,
+  EXTI0_IRQn,
+  EXTI1_IRQn,
+  EXTI2_IRQn,
+  EXTI2_TSC_IRQn,
+  EXTI3_IRQn,
+  EXTI4_IRQn,
+  EXTI9_5_IRQn,
+  EXTI15_10_IRQn,
   USART1_IRQn,
   USART2_IRQn,
   USART3_IRQn,
   UART4_IRQn,
-  USART6_IRQn
+  USART6_IRQn,
+  DMA1_Channel1_IRQn,
+  DMA1_Channel2_IRQn,
+  DMA1_Channel3_IRQn,
+  DMA1_Channel4_IRQn,
+  DMA1_Channel5_IRQn,
+  DMA1_Channel6_IRQn,
+  DMA1_Channel7_IRQn,
+  DMA1_Stream0_IRQn,
+  DMA1_Stream1_IRQn,
+  DMA1_Stream2_IRQn,
+  DMA1_Stream3_IRQn,
+  DMA1_Stream4_IRQn,
+  DMA1_Stream5_IRQn,
+  DMA1_Stream6_IRQn,
+  DMA1_Stream7_IRQn,
+  DMA2_Stream0_IRQn,
+  DMA2_Stream1_IRQn,
+  DMA2_Stream2_IRQn,
+  DMA2_Stream3_IRQn,
+  DMA2_Stream4_IRQn,
+  DMA2_Stream5_IRQn,
+  DMA2_Stream6_IRQn,
+  DMA2_Stream7_IRQn,
 };
 
 struct UART_InitTypeDef {
@@ -122,7 +154,12 @@ struct UART_InitTypeDef {
       OverSampling{}, OneBitSampling{};
 };
 
+struct DMA_HandleTypeDef;
+
 struct UART_HandleTypeDef {
+  DMA_HandleTypeDef* hdmatx{};
+  DMA_HandleTypeDef* hdmarx{};
+  uint32_t ErrorCode{};
   USART_TypeDef* Instance{};
   UART_InitTypeDef Init{};
 
@@ -286,8 +323,9 @@ inline uint32_t HAL_RCC_GetPCLK2Freq() { return pclk2_hz; }
 
 inline void HAL_UART_IRQHandler(UART_HandleTypeDef*) {}
 
-inline bool irq_enabled[32]{};
-inline uint32_t irq_priority[32]{}, irq_clears[32]{};
+inline bool irq_enabled[64]{};
+inline uint32_t irq_priority[64]{}, irq_clears[64]{};
+
 inline void HAL_NVIC_SetPriority(IRQn_Type irq, uint32_t priority, uint32_t) {
   irq_priority[irq] = priority;
 }
@@ -295,6 +333,7 @@ inline void HAL_NVIC_SetPriority(IRQn_Type irq, uint32_t priority, uint32_t) {
 inline void HAL_NVIC_EnableIRQ(IRQn_Type irq) { irq_enabled[irq] = true; }
 
 inline void HAL_NVIC_DisableIRQ(IRQn_Type irq) { irq_enabled[irq] = false; }
+
 inline void HAL_NVIC_ClearPendingIRQ(IRQn_Type irq) { ++irq_clears[irq]; }
 
 struct CoreDebug_Type {
@@ -323,3 +362,5 @@ inline uint32_t HAL_GetTick() {
   }
   return hal_tick;
 }
+
+#include "dma_hal_stubs.h"

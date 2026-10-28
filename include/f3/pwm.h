@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <span>
 
+#include "detail/dma.h"
 #include "interface/pin_names.h"
 #include "interface/pwm.h"
 #include "stm32f3xx_hal.h"  // IWYU pragma: export
@@ -52,7 +53,10 @@ class Pwm final : public interface::Pwm {
 
   [[nodiscard]] uint32_t GetFrequencyHz() const override;
 
-  void SendDataDma(std::span<const uint32_t> data) override;
+  bool SendDataDma(std::span<const uint32_t> data) override;
+  [[nodiscard]] interface::DmaStatus GetDmaStatus() const override;
+  [[nodiscard]] uint64_t GetPeriodTicks() const override;
+  void StopDma() override;
 
   void Stop() override;
 
@@ -65,6 +69,12 @@ class Pwm final : public interface::Pwm {
   [[nodiscard]] uint32_t ComplementaryAlternateFunction() const;
   [[nodiscard]] uint32_t AlternateFunction() const;
   [[nodiscard]] uint32_t TimerClockHz() const;
+
+  static void OnDmaComplete(DMA_HandleTypeDef* handle);
+  static void OnDmaError(DMA_HandleTypeDef* handle);
+  void FinishDma(interface::DmaStatus status);
+  detail::Dma dma_;
+  volatile interface::DmaStatus dma_status_{interface::DmaStatus::kIdle};
 
   PwmTimer timer_;
   PwmChannel channel_;
