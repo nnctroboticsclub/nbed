@@ -37,14 +37,15 @@ uint32_t ToHalMode(CanMode mode) {
 }
 
 bool IsCan1Pins(interface::PinName rx, interface::PinName tx) {
-  return (rx == interface::PinName::kPA11 && tx == interface::PinName::kPA12) ||
-         (rx == interface::PinName::kPB8 && tx == interface::PinName::kPB9) ||
-         (rx == interface::PinName::kPD0 && tx == interface::PinName::kPD1);
+  return (rx == interface::PinName::kPA11 || rx == interface::PinName::kPB8 ||
+          rx == interface::PinName::kPD0) &&
+         (tx == interface::PinName::kPA12 || tx == interface::PinName::kPB9 ||
+          tx == interface::PinName::kPD1);
 }
 
 bool IsCan2Pins(interface::PinName rx, interface::PinName tx) {
-  return (rx == interface::PinName::kPB5 && tx == interface::PinName::kPB6) ||
-         (rx == interface::PinName::kPB12 && tx == interface::PinName::kPB13);
+  return (rx == interface::PinName::kPB5 || rx == interface::PinName::kPB12) &&
+         (tx == interface::PinName::kPB6 || tx == interface::PinName::kPB13);
 }
 
 void DisableGpioClock(GPIO_TypeDef* port) {
@@ -283,8 +284,8 @@ void Can::ConfigureMsp(CAN_HandleTypeDef* handle) {
   if (can == nullptr) {
     return;
   }
-  GPIO_TypeDef* const port = PinMapper::GetGpioPort(can->config_.rx);
-  if (port == nullptr || port != PinMapper::GetGpioPort(can->config_.tx)) {
+  if (PinMapper::GetGpioPort(can->config_.rx) == nullptr ||
+      PinMapper::GetGpioPort(can->config_.tx) == nullptr) {
     return;
   }
   if (can->config_.peripheral == CanPeripheral::kCan1) {
@@ -316,11 +317,12 @@ void Can::DeconfigureMsp(CAN_HandleTypeDef* handle) {
   if (can == nullptr) {
     return;
   }
-  GPIO_TypeDef* const port = PinMapper::GetGpioPort(can->config_.rx);
-  if (port != nullptr) {
-    HAL_GPIO_DeInit(port, PinMapper::GetGpioPin(can->config_.rx) |
-                              PinMapper::GetGpioPin(can->config_.tx));
-    DisableGpioClock(port);
+  for (const auto pin : {can->config_.rx, can->config_.tx}) {
+    GPIO_TypeDef* const port = PinMapper::GetGpioPort(pin);
+    if (port != nullptr) {
+      HAL_GPIO_DeInit(port, PinMapper::GetGpioPin(pin));
+      DisableGpioClock(port);
+    }
   }
   const IRQn_Type irq = can->config_.peripheral == CanPeripheral::kCan1
                             ? CAN1_RX0_IRQn

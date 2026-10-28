@@ -65,6 +65,7 @@ inline void __disable_irq() { primask = 1; }
 inline void __set_PRIMASK(uint32_t mask) { primask = mask; }
 
 inline std::vector<std::pair<GPIO_TypeDef*, GPIO_InitTypeDef>> gpio_inits;
+inline std::vector<std::pair<GPIO_TypeDef*, uint32_t>> gpio_deinits;
 
 inline void HAL_GPIO_Init(GPIO_TypeDef* port, GPIO_InitTypeDef* config) {
   gpio_inits.emplace_back(port, *config);
@@ -77,7 +78,8 @@ inline void HAL_GPIO_Init(GPIO_TypeDef* port, GPIO_InitTypeDef* config) {
   }
 }
 
-inline void HAL_GPIO_DeInit(GPIO_TypeDef*, uint32_t pin) {
+inline void HAL_GPIO_DeInit(GPIO_TypeDef* port, uint32_t pin) {
+  gpio_deinits.emplace_back(port, pin);
   exti_mask &= ~pin;
   exti_rising &= ~pin;
   exti_falling &= ~pin;
@@ -124,6 +126,9 @@ enum IRQn_Type {
   USART3_IRQn,
   UART4_IRQn,
   USART6_IRQn,
+  CAN_RX0_IRQn,
+  CAN1_RX0_IRQn,
+  CAN2_RX0_IRQn,
   DMA1_Channel1_IRQn,
   DMA1_Channel2_IRQn,
   DMA1_Channel3_IRQn,

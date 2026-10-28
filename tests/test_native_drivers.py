@@ -21,13 +21,16 @@ class NativeDriverTests(unittest.TestCase):
                      f"stm32{family}xx_hal_gpio.h", f"stm32{family}xx_hal_gpio_ex.h",
                      f"stm32{family}xx_hal_rcc.h", f"stm32{family}xx_hal_uart.h",
                      f"stm32{family}xx_hal_spi.h", f"stm32{family}xx_hal_adc.h",
+                     f"stm32{family}xx_hal_can.h", f"stm32{family}xx_hal_cortex.h",
                      f"stm32{family}xx_hal_i2c.h", f"stm32{family}xx_hal_pwr_ex.h"):
-        stub = ("f3_pwm_hal_stubs.h" if suite in ("f3_pwm", "pwm_outputs", "dma") else
+        stub = ("can_hal_stubs.h" if suite == "can" else
+                "f3_pwm_hal_stubs.h" if suite in ("f3_pwm", "pwm_outputs", "dma") else
                 "f7_hal_stubs.h" if suite in ("f7_clock", "f7_peripherals") else
                 "hal_stubs.h")
         (directory / header).write_text(f'#include "{stub}"\n', encoding="utf-8")
       executable = directory / f"{family}-test.exe"
       drivers = {"spi": ("spi", "pin_mapper"),
+                 "can": ("can", "pin_mapper"),
                  "exti": ("interrupt_in", "gpio", "pin_mapper"),
                  "f3_pwm": ("pwm", "timer_reservation", "pin_mapper"),
                  "pwm_outputs": ("pwm", "timer_reservation", "pin_mapper"),
@@ -57,6 +60,15 @@ class NativeDriverTests(unittest.TestCase):
 
   def test_f3_dma(self):
     self.run_family("f3", "STM32F303x8", "dma")
+
+  def test_f3_can(self):
+    self.run_family("f3", "STM32F303x8", "can")
+
+  def test_f4_can(self):
+    self.run_family("f4", "STM32F446xx", "can")
+
+  def test_f7_can(self):
+    self.run_family("f7", "STM32F767xx", "can")
 
   def test_f4_dma(self):
     self.run_family("f4", "STM32F446xx", "dma")
