@@ -55,6 +55,7 @@ static_assert(!Dma::IsAccessibleAddress(0x20080000U, 1));
 namespace {
 void TestOwnership() {
   Dma first, second;
+  assert(!first.Initialize(DmaRequest::kUsart1Tx, false, true, 5, true));
   primask = 1;
   assert(!first.Initialize(DmaRequest::kTim1Update, false, true, 16));
   assert(first.Initialize(DmaRequest::kTim1Update, false, true));

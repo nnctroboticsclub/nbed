@@ -88,8 +88,8 @@ class InterruptLock {
 Dma::~Dma() { Release(); }
 
 bool Dma::Initialize(DmaRequest request, bool receive, bool word,
-                     uint32_t interrupt_priority) {
-  if (slot_ >= 0 || interrupt_priority > 15U) {
+                     uint32_t interrupt_priority, bool halfword) {
+  if (slot_ >= 0 || interrupt_priority > 15U || (word && halfword)) {
     return false;
   }
   for (const auto& route : kRoutes) {
@@ -122,9 +122,11 @@ bool Dma::Initialize(DmaRequest request, bool receive, bool word,
     handle_.Init.PeriphInc = DMA_PINC_DISABLE;
     handle_.Init.MemInc = DMA_MINC_ENABLE;
     handle_.Init.PeriphDataAlignment =
-        word ? DMA_PDATAALIGN_WORD : DMA_PDATAALIGN_BYTE;
+        word ? DMA_PDATAALIGN_WORD :
+        halfword ? DMA_PDATAALIGN_HALFWORD : DMA_PDATAALIGN_BYTE;
     handle_.Init.MemDataAlignment =
-        word ? DMA_MDATAALIGN_WORD : DMA_MDATAALIGN_BYTE;
+        word ? DMA_MDATAALIGN_WORD :
+        halfword ? DMA_MDATAALIGN_HALFWORD : DMA_MDATAALIGN_BYTE;
     handle_.Init.Mode = DMA_NORMAL;
     handle_.Init.Priority = word ? DMA_PRIORITY_VERY_HIGH : DMA_PRIORITY_HIGH;
     if (HAL_DMA_Init(&handle_) != HAL_OK) {

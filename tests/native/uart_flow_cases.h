@@ -1,0 +1,48 @@
+#pragma once
+// ST package control pins, revision 7d1f1514ed5583ec5007ad91236b4e1d377295b1.
+constexpr std::array kFlowCases{
+#if defined(STM32F303x8)
+    FlowCase{kUsart2, kPA0, true, 7},
+    FlowCase{kUsart2, kPA1, false, 7},
+    FlowCase{kUsart1, kPA11, true, 7},
+    FlowCase{kUsart1, kPA12, false, 7},
+#elif defined(STM32F446xx)
+    FlowCase{kUsart2, kPA0, true, 7},
+    FlowCase{kUsart2, kPA1, false, 7},
+    FlowCase{kUsart1, kPA11, true, 7},
+    FlowCase{kUsart1, kPA12, false, 7},
+    FlowCase{kUart4, kPA15, false, 8},
+    FlowCase{kUart4, kPB0, true, 8},
+    FlowCase{kUsart3, kPB13, true, 7},
+    FlowCase{kUsart3, kPB14, false, 7},
+    FlowCase{kUart5, kPC8, false, 7},
+    FlowCase{kUart5, kPC9, true, 7},
+#elif defined(STM32F767xx)
+    FlowCase{kUsart2, kPA0, true, 7},
+    FlowCase{kUsart2, kPA1, false, 7},
+    FlowCase{kUsart1, kPA11, true, 7},
+    FlowCase{kUsart1, kPA12, false, 7},
+    FlowCase{kUart4, kPA15, false, 8},
+    FlowCase{kUart4, kPB0, true, 8},
+    FlowCase{kUsart3, kPB13, true, 7},
+    FlowCase{kUart4, kPB14, false, 8},
+    FlowCase{kUsart3, kPB14, false, 7},
+    FlowCase{kUart4, kPB15, true, 8},
+    FlowCase{kUart5, kPC8, false, 7},
+    FlowCase{kUart5, kPC9, true, 7},
+    FlowCase{kUsart3, kPD11, true, 7},
+    FlowCase{kUsart3, kPD12, false, 7},
+    FlowCase{kUart8, kPD14, true, 8},
+    FlowCase{kUart8, kPD15, false, 8},
+    FlowCase{kUsart2, kPD3, true, 7},
+    FlowCase{kUsart2, kPD4, false, 7},
+    FlowCase{kUart7, kPE10, true, 8},
+    FlowCase{kUart7, kPE9, false, 8},
+    FlowCase{kUart7, kPF8, false, 8},
+    FlowCase{kUart7, kPF9, true, 8},
+    FlowCase{kUsart6, kPG12, false, 8},
+    FlowCase{kUsart6, kPG13, true, 8},
+    FlowCase{kUsart6, kPG15, true, 8},
+    FlowCase{kUsart6, kPG8, false, 8},
+#endif
+};

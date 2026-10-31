@@ -256,6 +256,8 @@ void TestTransfers(const Unit& unit) {
   }
 }
 
+#include "uart_config_cases.h"
+
 int main() {
 #ifndef STM32F303x8
   static_assert(static_cast<unsigned>(kUsart2) == 0);
@@ -279,6 +281,12 @@ int main() {
   for (const auto& unit : kUnits) {
     TestPins(unit);
     TestTransfers(unit);
+    TestBasicConfig(unit);
+    TestFlowConfig(unit);
+#if !defined(STM32F446xx)
+    TestAdvancedConfig(unit);
+#endif
+    TestWordTransfers(unit);
   }
   // All UART owners and interrupt handlers must work independently at once.
   std::vector<std::unique_ptr<Uart>> owners;

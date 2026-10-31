@@ -26,21 +26,57 @@ interface::DmaRequest Uart::DmaRequestFor(bool receive) const {
 }
 
 bool Uart::SendDma(interface::UartTxMessage message) {
+  return !detail::IsUartWordTransfer(config_.hal) && message.size() <= 65535 &&
+         StartTxDma(message.data(), message.size(),
+                    static_cast<uint16_t>(message.size()), false);
+}
+
+bool Uart::ReceiveDma(interface::UartRxMessage message) {
+  return !detail::IsUartWordTransfer(config_.hal) && message.size() <= 65535 &&
+         StartRxDma(message.data(), message.size(),
+                    static_cast<uint16_t>(message.size()), false);
+}
+
+bool Uart::SendWordsDma(interface::UartWordTxMessage message) {
+  if (!detail::IsUartWordTransfer(config_.hal) || message.size() > 65535 ||
+      (reinterpret_cast<uintptr_t>(message.data()) & 1U) != 0 ||
+      !std::all_of(message.begin(), message.end(),
+                   [](uint16_t word) { return word <= 0x1ffU; })) {
+    return false;
+  }
+  return StartTxDma(reinterpret_cast<const uint8_t*>(message.data()),
+                     message.size_bytes(),
+                     static_cast<uint16_t>(message.size()),
+                     true);
+}
+
+bool Uart::ReceiveWordsDma(interface::UartWordRxMessage message) {
+  if (!detail::IsUartWordTransfer(config_.hal) || message.size() > 65535 ||
+      (reinterpret_cast<uintptr_t>(message.data()) & 1U) != 0) {
+    return false;
+  }
+  return StartRxDma(reinterpret_cast<uint8_t*>(message.data()),
+                     message.size_bytes(),
+                     static_cast<uint16_t>(message.size()),
+                     true);
+}
+
+bool Uart::StartTxDma(const uint8_t* data, size_t bytes, uint16_t count,
+                      bool halfword) {
   using interface::DmaStatus;
-  if (!initialized_ || tx_dma_status_ == DmaStatus::kBusy || message.empty() ||
-      message.size() > 65535 ||
-      !detail::Dma::PrepareBuffer(message.data(), message.size(), false)) {
+  if (!initialized_ || (config_.hal.Mode & UART_MODE_TX) == 0 ||
+      tx_dma_status_ == DmaStatus::kBusy || count == 0 ||
+      !detail::Dma::PrepareBuffer(data, bytes, false)) {
     return false;
   }
   if (!tx_dma_.IsInitialized() &&
       !tx_dma_.Initialize(DmaRequestFor(false), false, false,
-                          interrupt_priority_)) {
+                          interrupt_priority_, halfword)) {
     return false;
   }
   __HAL_LINKDMA(&handle_, hdmatx, tx_dma_.GetHandle());
   tx_dma_status_ = DmaStatus::kBusy;
-  if (HAL_UART_Transmit_DMA(&handle_, message.data(),
-                            static_cast<uint16_t>(message.size())) != HAL_OK) {
+  if (HAL_UART_Transmit_DMA(&handle_, data, count) != HAL_OK) {
     tx_dma_status_ = DmaStatus::kError;
     tx_dma_.Release();
     handle_.hdmatx = nullptr;
@@ -49,24 +85,22 @@ bool Uart::SendDma(interface::UartTxMessage message) {
   return true;
 }
 
-bool Uart::ReceiveDma(interface::UartRxMessage message) {
+bool Uart::StartRxDma(uint8_t* data, size_t bytes, uint16_t count, bool halfword) {
   using interface::DmaStatus;
-  if (!initialized_ || rx_interrupt_enabled_ ||
-      rx_dma_status_ == DmaStatus::kBusy || message.empty() ||
-      message.size() > 65535 ||
-      !detail::Dma::PrepareBuffer(message.data(), message.size(), true)) {
+  if (!initialized_ || (config_.hal.Mode & UART_MODE_RX) == 0 ||
+      rx_interrupt_enabled_ || rx_dma_status_ == DmaStatus::kBusy || count == 0 ||
+      !detail::Dma::PrepareBuffer(data, bytes, true)) {
     return false;
   }
   if (!rx_dma_.IsInitialized() &&
       !rx_dma_.Initialize(DmaRequestFor(true), true, false,
-                          interrupt_priority_)) {
+                          interrupt_priority_, halfword)) {
     return false;
   }
   __HAL_LINKDMA(&handle_, hdmarx, rx_dma_.GetHandle());
-  rx_dma_buffer_ = message;
+  rx_dma_buffer_ = interface::UartRxMessage{data, bytes};
   rx_dma_status_ = DmaStatus::kBusy;
-  if (HAL_UART_Receive_DMA(&handle_, message.data(),
-                           static_cast<uint16_t>(message.size())) != HAL_OK) {
+  if (HAL_UART_Receive_DMA(&handle_, data, count) != HAL_OK) {
     rx_dma_status_ = DmaStatus::kError;
     rx_dma_.Release();
     handle_.hdmarx = nullptr;

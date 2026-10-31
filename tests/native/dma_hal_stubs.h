@@ -37,6 +37,8 @@ inline constexpr uint32_t DMA_CHANNEL_3 = 3, DMA_CHANNEL_4 = 4,
                           DMA_MEMORY_TO_PERIPH = 1, DMA_PINC_DISABLE = 0,
                           DMA_MINC_ENABLE = 1, DMA_PDATAALIGN_WORD = 4,
                           DMA_PDATAALIGN_BYTE = 1, DMA_MDATAALIGN_WORD = 4,
+                          DMA_PDATAALIGN_HALFWORD = 2,
+                          DMA_MDATAALIGN_HALFWORD = 2,
                           DMA_MDATAALIGN_BYTE = 1, DMA_NORMAL = 0,
                           DMA_PRIORITY_VERY_HIGH = 3, DMA_PRIORITY_HIGH = 2;
 
@@ -108,14 +110,22 @@ inline void HAL_DMA_IRQHandler(DMA_HandleTypeDef* handle) {
     (dma).Parent = (handle);              \
   } while (false)
 
+inline uint16_t uart_dma_tx_size{}, uart_dma_rx_size{};
+inline const uint8_t* uart_dma_tx_data{};
+inline uint8_t* uart_dma_rx_data{};
+
 inline HAL_StatusTypeDef HAL_UART_Transmit_DMA(UART_HandleTypeDef* handle,
-                                               const uint8_t*, uint16_t) {
+                                               const uint8_t* data, uint16_t size) {
+  uart_dma_tx_size = size;
+  uart_dma_tx_data = data;
   last_dma_handle = handle->hdmatx;
   return uart_dma_tx_status;
 }
 
 inline HAL_StatusTypeDef HAL_UART_Receive_DMA(UART_HandleTypeDef* handle,
-                                              uint8_t*, uint16_t) {
+                                              uint8_t* data, uint16_t size) {
+  uart_dma_rx_size = size;
+  uart_dma_rx_data = data;
   last_dma_handle = handle->hdmarx;
   return uart_dma_rx_status;
 }
@@ -144,6 +154,7 @@ inline SCB_Type scb;
 inline constexpr uint32_t SCB_CCR_DC_Msk = 1U << 16;
 inline unsigned cache_clean_count{}, cache_clean_invalidate_count{},
     cache_invalidate_count{};
+inline int32_t cache_invalidate_bytes{};
 
 inline void SCB_CleanDCache_by_Addr(uint32_t*, int32_t) { ++cache_clean_count; }
 
@@ -151,6 +162,7 @@ inline void SCB_CleanInvalidateDCache_by_Addr(uint32_t*, int32_t) {
   ++cache_clean_invalidate_count;
 }
 
-inline void SCB_InvalidateDCache_by_Addr(uint32_t*, int32_t) {
+inline void SCB_InvalidateDCache_by_Addr(uint32_t*, int32_t bytes) {
+  cache_invalidate_bytes = bytes;
   ++cache_invalidate_count;
 }

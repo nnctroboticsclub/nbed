@@ -42,6 +42,7 @@ enum {
   GPIO_MODE_OUTPUT_PP,
   GPIO_MODE_AF_PP,
   GPIO_SPEED_FREQ_LOW,
+  GPIO_SPEED_FREQ_MEDIUM,
   GPIO_SPEED_FREQ_HIGH,
   GPIO_SPEED_FREQ_VERY_HIGH,
   GPIO_AF7_USART1 = 7,
@@ -199,21 +200,61 @@ struct UART_HandleTypeDef {
   USART_TypeDef* Instance{};
   UART_InitTypeDef Init{};
 
-  struct {
-    uint32_t AdvFeatureInit{};
+  struct AdvancedInitType {
+    uint32_t AdvFeatureInit{}, TxPinLevelInvert{}, RxPinLevelInvert{}, DataInvert{},
+        Swap{}, OverrunDisable{}, DMADisableonRxError{}, AutoBaudRateEnable{},
+        AutoBaudRateMode{}, MSBFirst{};
   } AdvancedInit;
+
 };
 
-enum {
-  UART_WORDLENGTH_8B,
-  UART_STOPBITS_1,
-  UART_PARITY_NONE,
-  UART_MODE_TX_RX,
-  UART_HWCONTROL_NONE,
-  UART_OVERSAMPLING_16,
-  UART_ONE_BIT_SAMPLE_DISABLE,
-  UART_ADVFEATURE_NO_INIT
-};
+using UART_AdvFeatureInitTypeDef = UART_HandleTypeDef::AdvancedInitType;
+inline constexpr uint32_t UART_WORDLENGTH_8B = 0, UART_WORDLENGTH_9B = 1U << 12,
+    UART_STOPBITS_1 = 0, UART_STOPBITS_2 = 2U << 12,
+    UART_PARITY_NONE = 0, UART_PARITY_EVEN = 1U << 10,
+    UART_PARITY_ODD = (1U << 10) | (1U << 9),
+    UART_MODE_RX = 1U << 2, UART_MODE_TX = 1U << 3,
+    UART_MODE_TX_RX = UART_MODE_RX | UART_MODE_TX,
+    UART_HWCONTROL_NONE = 0, UART_HWCONTROL_RTS = 1U << 8,
+    UART_HWCONTROL_CTS = 1U << 9,
+    UART_HWCONTROL_RTS_CTS = UART_HWCONTROL_RTS | UART_HWCONTROL_CTS,
+    UART_OVERSAMPLING_16 = 0, UART_OVERSAMPLING_8 = 1U << 15,
+    UART_ONE_BIT_SAMPLE_DISABLE = 0, UART_ONE_BIT_SAMPLE_ENABLE = 1U << 11,
+    UART_ADVFEATURE_NO_INIT = 0;
+#if !defined(STM32F446xx)
+#define UART_WORDLENGTH_7B (1U << 28)
+#define UART_STOPBITS_0_5 (1U << 12)
+#define UART_STOPBITS_1_5 (3U << 12)
+#endif
+inline constexpr uint32_t UART_ADVFEATURE_TXINVERT_INIT = 1,
+    UART_ADVFEATURE_RXINVERT_INIT = 2, UART_ADVFEATURE_DATAINVERT_INIT = 4,
+    UART_ADVFEATURE_SWAP_INIT = 8, UART_ADVFEATURE_RXOVERRUNDISABLE_INIT = 16,
+    UART_ADVFEATURE_DMADISABLEONERROR_INIT = 32,
+    UART_ADVFEATURE_AUTOBAUDRATE_INIT = 64, UART_ADVFEATURE_MSBFIRST_INIT = 128,
+    UART_ADVFEATURE_TXINV_DISABLE = 0, UART_ADVFEATURE_TXINV_ENABLE = 1U << 17,
+    UART_ADVFEATURE_RXINV_DISABLE = 0, UART_ADVFEATURE_RXINV_ENABLE = 1U << 16,
+    UART_ADVFEATURE_DATAINV_DISABLE = 0, UART_ADVFEATURE_DATAINV_ENABLE = 1U << 18,
+    UART_ADVFEATURE_SWAP_DISABLE = 0, UART_ADVFEATURE_SWAP_ENABLE = 1U << 15,
+    UART_ADVFEATURE_OVERRUN_ENABLE = 0, UART_ADVFEATURE_OVERRUN_DISABLE = 1U << 12,
+    UART_ADVFEATURE_DMA_ENABLEONRXERROR = 0,
+    UART_ADVFEATURE_DMA_DISABLEONRXERROR = 1U << 13,
+    UART_ADVFEATURE_AUTOBAUDRATE_DISABLE = 0,
+    UART_ADVFEATURE_AUTOBAUDRATE_ENABLE = 1U << 20,
+    UART_ADVFEATURE_MSBFIRST_DISABLE = 0,
+    UART_ADVFEATURE_MSBFIRST_ENABLE = 1U << 19,
+    UART_ADVFEATURE_AUTOBAUDRATE_ONSTARTBIT = 0,
+    UART_ADVFEATURE_AUTOBAUDRATE_ONFALLINGEDGE = 1U << 21,
+    UART_ADVFEATURE_AUTOBAUDRATE_ON0X7FFRAME = 2U << 21,
+    UART_ADVFEATURE_AUTOBAUDRATE_ON0X55FRAME = 3U << 21;
+#define IS_UART_HWFLOW_INSTANCE(x) ((x) != nullptr)
+#define IS_UART_BAUDRATE(x) ((x) <= 27000000U)
+#define IS_UART_AUTOBAUDRATE_DETECTION_INSTANCE(x) ((x) == USART1)
+#define IS_USART_AUTOBAUDRATE_DETECTION_INSTANCE(x) \
+  ((x) == USART1 || (x) == USART2 || (x) == USART3 || (x) == USART6)
+#define __HAL_UART_ONE_BIT_SAMPLE_ENABLE(h) \
+  ((h)->Init.OneBitSampling = UART_ONE_BIT_SAMPLE_ENABLE)
+#define __HAL_UART_ONE_BIT_SAMPLE_DISABLE(h) \
+  ((h)->Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE)
 
 enum HAL_StatusTypeDef { HAL_OK, HAL_ERROR };
 
@@ -228,6 +269,9 @@ inline unsigned uart_init_calls{}, uart_deinit_calls{}, uart_it_calls{},
 inline UART_HandleTypeDef* last_uart_irq{};
 inline UART_HandleTypeDef* last_uart_io{};
 inline uint8_t* uart_it_data{};
+inline uint32_t uart_tx_timeout{}, uart_rx_timeout{};
+inline uint16_t uart_transfer_count{};
+inline std::vector<uint16_t> uart_receive_words;
 
 inline HAL_StatusTypeDef HAL_UART_Init(UART_HandleTypeDef*) {
   ++uart_init_calls;
@@ -240,19 +284,33 @@ inline HAL_StatusTypeDef HAL_UART_DeInit(UART_HandleTypeDef*) {
 }
 
 inline HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef* handle,
-                                         uint8_t* data, uint16_t size, uint32_t) {
+                                         uint8_t* data, uint16_t size, uint32_t timeout) {
   last_uart_io = handle;
+  uart_tx_timeout = timeout;
+  uart_transfer_count = size;
   tx_sizes.push_back(size);
   if (static_cast<int>(tx_sizes.size()) == fail_tx_call) {
     return HAL_ERROR;
   }
-  tx_data.insert(tx_data.end(), data, data + size);
+  const auto bytes = handle->Init.WordLength == UART_WORDLENGTH_9B &&
+                     handle->Init.Parity == UART_PARITY_NONE ? size * 2U : size;
+  tx_data.insert(tx_data.end(), data, data + bytes);
   return HAL_OK;
 }
 
-inline HAL_StatusTypeDef HAL_UART_Receive(UART_HandleTypeDef* handle, uint8_t*,
-                                          uint16_t, uint32_t) {
+inline HAL_StatusTypeDef HAL_UART_Receive(UART_HandleTypeDef* handle,
+                                          uint8_t* data, uint16_t size,
+                                          uint32_t timeout) {
   last_uart_io = handle;
+  uart_rx_timeout = timeout;
+  uart_transfer_count = size;
+  if (handle->Init.WordLength == UART_WORDLENGTH_9B &&
+      handle->Init.Parity == UART_PARITY_NONE) {
+    auto* words = reinterpret_cast<uint16_t*>(data);
+    for (unsigned i = 0; i < size && i < uart_receive_words.size(); ++i) {
+      words[i] = uart_receive_words[i];
+    }
+  }
   return HAL_OK;
 }
 

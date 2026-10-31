@@ -26,7 +26,8 @@ class Dma {
   Dma& operator=(Dma&&) = delete;
 
   bool Initialize(interface::DmaRequest request, bool receive = false,
-                  bool word = false, uint32_t interrupt_priority = 5);
+                  bool word = false, uint32_t interrupt_priority = 5,
+                  bool halfword = false);
   void Release();
 
   [[nodiscard]] DMA_HandleTypeDef& GetHandle() { return handle_; }

@@ -66,6 +66,10 @@ PWMオブジェクト自体は初期化済みのままで、再送や通常PWM�
 
 ## UART の DMA
 
+v0.12.0から9データビット・パリティなしでは `SendWordsDma()` / `ReceiveWordsDma()` を使用します。
+`uint16_t` の1要素が1文字で、DMAはhalfword幅、長さは文字数です。
+F7のキャッシュ条件はバイト数で適用します。[UART設定ガイド](uart.md#9データビットパリティなし)を参照してください。
+
 ```cpp
 Uart uart(kUsart2, kPA3, kPA2, 115200);
 if (!uart.Initialize()) { System::ErrorHandler(); }
