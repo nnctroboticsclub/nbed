@@ -22,7 +22,13 @@ enum class DmaRequest : uint8_t {
   kUart4Tx,
   kUart4Rx,
   kUsart6Tx,
-  kUsart6Rx
+  kUsart6Rx,
+  kUart5Tx,
+  kUart5Rx,
+  kUart7Tx,
+  kUart7Rx,
+  kUart8Tx,
+  kUart8Rx
 };
 
 }  // namespace nkrc::nbed::interface

@@ -204,8 +204,14 @@ IRQn_Type Uart::Irq() const {
 }
 
 Uart*& Uart::InstanceFor(UartPeripheral peripheral) {
-  return peripheral == UartPeripheral::kUsart2 ? Usart2Instance()
-                                               : Usart1Instance();
+  if (peripheral == UartPeripheral::kUsart2) {
+    return Usart2Instance();
+  }
+  if (peripheral == UartPeripheral::kUsart1) {
+    return Usart1Instance();
+  }
+  static Uart* invalid = nullptr;
+  return invalid;
 }
 
 extern "C" {

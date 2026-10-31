@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <utility>
 #include <vector>
@@ -43,9 +44,19 @@ enum {
   GPIO_SPEED_FREQ_LOW,
   GPIO_SPEED_FREQ_HIGH,
   GPIO_SPEED_FREQ_VERY_HIGH,
-  GPIO_AF7_USART2,
-  GPIO_AF8_UART4,
-  GPIO_AF8_USART6
+  GPIO_AF7_USART1 = 7,
+  GPIO_AF7_USART2 = 7,
+  GPIO_AF7_USART3 = 7,
+  GPIO_AF8_UART4 = 8,
+  GPIO_AF8_UART5 = 8,
+  GPIO_AF8_USART6 = 8,
+  GPIO_AF8_UART7 = 8,
+  GPIO_AF8_UART8 = 8,
+  GPIO_AF4_USART1 = 4,
+  GPIO_AF6_UART4 = 6,
+  GPIO_AF1_UART5 = 1,
+  GPIO_AF7_UART5 = 7,
+  GPIO_AF12_UART7 = 12
 };
 
 inline constexpr uint32_t GPIO_MODE_IT_RISING = 0x101;
@@ -96,21 +107,38 @@ inline GPIO_PinState HAL_GPIO_ReadPin(GPIO_TypeDef* port, uint16_t pin) {
 
 struct USART_TypeDef {};
 
-inline USART_TypeDef usart1, usart2, usart3, uart4, usart6;
+inline USART_TypeDef usart1, usart2, usart3, uart4, uart5, usart6, uart7, uart8;
 #define USART1 (&usart1)
 #define USART2 (&usart2)
 #define USART3 (&usart3)
 #define UART4 (&uart4)
+#define UART5 (&uart5)
 #define USART6 (&usart6)
-#define __HAL_RCC_USART1_CLK_ENABLE() ((void)0)
-#define __HAL_RCC_USART2_CLK_ENABLE() ((void)0)
-#define __HAL_RCC_USART3_CLK_ENABLE() ((void)0)
-#define __HAL_RCC_UART4_CLK_ENABLE() ((void)0)
-#define __HAL_RCC_USART6_CLK_ENABLE() ((void)0)
-#define __HAL_RCC_USART2_CONFIG(source) ((void)0)
-#define __HAL_RCC_USART3_CONFIG(source) ((void)0)
-#define __HAL_RCC_UART4_CONFIG(source) ((void)0)
-#define __HAL_RCC_USART6_CONFIG(source) ((void)0)
+#define UART7 (&uart7)
+#define UART8 (&uart8)
+inline std::array<bool, 9> uart_clocks{};
+inline std::array<unsigned, 9> uart_clock_sources{};
+#define __HAL_RCC_USART1_CLK_ENABLE() (uart_clocks[1] = true)
+#define __HAL_RCC_USART2_CLK_ENABLE() (uart_clocks[2] = true)
+#define __HAL_RCC_USART3_CLK_ENABLE() (uart_clocks[3] = true)
+#define __HAL_RCC_UART4_CLK_ENABLE() (uart_clocks[4] = true)
+#define __HAL_RCC_UART5_CLK_ENABLE() (uart_clocks[5] = true)
+#define __HAL_RCC_USART6_CLK_ENABLE() (uart_clocks[6] = true)
+#define __HAL_RCC_UART7_CLK_ENABLE() (uart_clocks[7] = true)
+#define __HAL_RCC_UART8_CLK_ENABLE() (uart_clocks[8] = true)
+inline constexpr unsigned RCC_USART1CLKSOURCE_PCLK2 = 2,
+    RCC_USART2CLKSOURCE_PCLK1 = 1, RCC_USART3CLKSOURCE_PCLK1 = 1,
+    RCC_UART4CLKSOURCE_PCLK1 = 1, RCC_UART5CLKSOURCE_PCLK1 = 1,
+    RCC_USART6CLKSOURCE_PCLK2 = 2, RCC_UART7CLKSOURCE_PCLK1 = 1,
+    RCC_UART8CLKSOURCE_PCLK1 = 1;
+#define __HAL_RCC_USART1_CONFIG(source) (uart_clock_sources[1] = (source))
+#define __HAL_RCC_USART2_CONFIG(source) (uart_clock_sources[2] = (source))
+#define __HAL_RCC_USART3_CONFIG(source) (uart_clock_sources[3] = (source))
+#define __HAL_RCC_UART4_CONFIG(source) (uart_clock_sources[4] = (source))
+#define __HAL_RCC_UART5_CONFIG(source) (uart_clock_sources[5] = (source))
+#define __HAL_RCC_USART6_CONFIG(source) (uart_clock_sources[6] = (source))
+#define __HAL_RCC_UART7_CONFIG(source) (uart_clock_sources[7] = (source))
+#define __HAL_RCC_UART8_CONFIG(source) (uart_clock_sources[8] = (source))
 
 enum IRQn_Type {
   EXTI0_IRQn,
@@ -125,7 +153,10 @@ enum IRQn_Type {
   USART2_IRQn,
   USART3_IRQn,
   UART4_IRQn,
+  UART5_IRQn,
   USART6_IRQn,
+  UART7_IRQn,
+  UART8_IRQn,
   CAN_RX0_IRQn,
   CAN1_RX0_IRQn,
   CAN2_RX0_IRQn,
@@ -191,12 +222,26 @@ inline std::vector<uint16_t> tx_sizes;
 inline std::vector<uint8_t> tx_data;
 inline int fail_tx_call = -1;
 
-inline HAL_StatusTypeDef HAL_UART_Init(UART_HandleTypeDef*) { return HAL_OK; }
+inline HAL_StatusTypeDef uart_init_status = HAL_OK, uart_it_status = HAL_OK;
+inline unsigned uart_init_calls{}, uart_deinit_calls{}, uart_it_calls{},
+    uart_irq_calls{};
+inline UART_HandleTypeDef* last_uart_irq{};
+inline UART_HandleTypeDef* last_uart_io{};
+inline uint8_t* uart_it_data{};
 
-inline HAL_StatusTypeDef HAL_UART_DeInit(UART_HandleTypeDef*) { return HAL_OK; }
+inline HAL_StatusTypeDef HAL_UART_Init(UART_HandleTypeDef*) {
+  ++uart_init_calls;
+  return uart_init_status;
+}
 
-inline HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef*, uint8_t* data,
-                                           uint16_t size, uint32_t) {
+inline HAL_StatusTypeDef HAL_UART_DeInit(UART_HandleTypeDef*) {
+  ++uart_deinit_calls;
+  return HAL_OK;
+}
+
+inline HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef* handle,
+                                         uint8_t* data, uint16_t size, uint32_t) {
+  last_uart_io = handle;
   tx_sizes.push_back(size);
   if (static_cast<int>(tx_sizes.size()) == fail_tx_call) {
     return HAL_ERROR;
@@ -205,14 +250,17 @@ inline HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef*, uint8_t* data,
   return HAL_OK;
 }
 
-inline HAL_StatusTypeDef HAL_UART_Receive(UART_HandleTypeDef*, uint8_t*,
+inline HAL_StatusTypeDef HAL_UART_Receive(UART_HandleTypeDef* handle, uint8_t*,
                                           uint16_t, uint32_t) {
+  last_uart_io = handle;
   return HAL_OK;
 }
 
-inline HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef*, uint8_t*,
+inline HAL_StatusTypeDef HAL_UART_Receive_IT(UART_HandleTypeDef*, uint8_t* data,
                                              uint16_t) {
-  return HAL_OK;
+  ++uart_it_calls;
+  uart_it_data = data;
+  return uart_it_status;
 }
 
 struct SPI_TypeDef {
@@ -326,7 +374,10 @@ inline uint32_t HAL_RCC_GetPCLK1Freq() { return pclk1_hz; }
 
 inline uint32_t HAL_RCC_GetPCLK2Freq() { return pclk2_hz; }
 
-inline void HAL_UART_IRQHandler(UART_HandleTypeDef*) {}
+inline void HAL_UART_IRQHandler(UART_HandleTypeDef* handle) {
+  ++uart_irq_calls;
+  last_uart_irq = handle;
+}
 
 inline bool irq_enabled[64]{};
 inline uint32_t irq_priority[64]{}, irq_clears[64]{};

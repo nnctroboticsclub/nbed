@@ -50,15 +50,23 @@ constexpr std::array kRoutes{
     Route{DmaRequest::kTim1Update, 13, DMA_CHANNEL_6},
     Route{DmaRequest::kTim2Update, 1, DMA_CHANNEL_3},
     Route{DmaRequest::kTim3Update, 2, DMA_CHANNEL_5},
+    Route{DmaRequest::kUsart1Tx, 15, DMA_CHANNEL_4},
+    Route{DmaRequest::kUsart1Rx, 10, DMA_CHANNEL_4},
     Route{DmaRequest::kUsart2Tx, 6, DMA_CHANNEL_4},
     Route{DmaRequest::kUsart2Rx, 5, DMA_CHANNEL_4},
     Route{DmaRequest::kUsart3Tx, 3, DMA_CHANNEL_4},
     Route{DmaRequest::kUsart3Rx, 1, DMA_CHANNEL_4},
     Route{DmaRequest::kUart4Tx, 4, DMA_CHANNEL_4},
     Route{DmaRequest::kUart4Rx, 2, DMA_CHANNEL_4},
-#if defined(STM32F767xx)
+    Route{DmaRequest::kUart5Tx, 7, DMA_CHANNEL_4},
+    Route{DmaRequest::kUart5Rx, 0, DMA_CHANNEL_4},
     Route{DmaRequest::kUsart6Tx, 14, DMA_CHANNEL_5},
     Route{DmaRequest::kUsart6Rx, 9, DMA_CHANNEL_5},
+#if defined(STM32F767xx)
+    Route{DmaRequest::kUart7Tx, 1, DMA_CHANNEL_5},
+    Route{DmaRequest::kUart7Rx, 3, DMA_CHANNEL_5},
+    Route{DmaRequest::kUart8Tx, 0, DMA_CHANNEL_5},
+    Route{DmaRequest::kUart8Rx, 6, DMA_CHANNEL_5},
 #endif
 };
 #endif

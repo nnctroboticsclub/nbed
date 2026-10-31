@@ -107,15 +107,23 @@ void TestRoutes() {
       Mapping{DmaRequest::kTim1Update, DMA2_Stream5, DMA_CHANNEL_6},
       Mapping{DmaRequest::kTim2Update, DMA1_Stream1, DMA_CHANNEL_3},
       Mapping{DmaRequest::kTim3Update, DMA1_Stream2, DMA_CHANNEL_5},
+      Mapping{DmaRequest::kUsart1Tx, DMA2_Stream7, DMA_CHANNEL_4},
+      Mapping{DmaRequest::kUsart1Rx, DMA2_Stream2, DMA_CHANNEL_4},
       Mapping{DmaRequest::kUsart2Tx, DMA1_Stream6, DMA_CHANNEL_4},
       Mapping{DmaRequest::kUsart2Rx, DMA1_Stream5, DMA_CHANNEL_4},
       Mapping{DmaRequest::kUsart3Tx, DMA1_Stream3, DMA_CHANNEL_4},
       Mapping{DmaRequest::kUsart3Rx, DMA1_Stream1, DMA_CHANNEL_4},
       Mapping{DmaRequest::kUart4Tx, DMA1_Stream4, DMA_CHANNEL_4},
       Mapping{DmaRequest::kUart4Rx, DMA1_Stream2, DMA_CHANNEL_4},
-#ifdef STM32F767xx
+      Mapping{DmaRequest::kUart5Tx, DMA1_Stream7, DMA_CHANNEL_4},
+      Mapping{DmaRequest::kUart5Rx, DMA1_Stream0, DMA_CHANNEL_4},
       Mapping{DmaRequest::kUsart6Tx, DMA2_Stream6, DMA_CHANNEL_5},
       Mapping{DmaRequest::kUsart6Rx, DMA2_Stream1, DMA_CHANNEL_5},
+#ifdef STM32F767xx
+      Mapping{DmaRequest::kUart7Tx, DMA1_Stream1, DMA_CHANNEL_5},
+      Mapping{DmaRequest::kUart7Rx, DMA1_Stream3, DMA_CHANNEL_5},
+      Mapping{DmaRequest::kUart8Tx, DMA1_Stream0, DMA_CHANNEL_5},
+      Mapping{DmaRequest::kUart8Rx, DMA1_Stream6, DMA_CHANNEL_5},
 #endif
 #endif
   };

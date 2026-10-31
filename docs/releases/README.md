@@ -5,6 +5,7 @@
 
 | バージョン | 公開日（日本時間） | GitHub |
 | --- | --- | --- |
+| [v0.11.0](v0.11.0.md) | 2026-11-01 | [Release](https://github.com/nnctroboticsclub/nbed/releases/tag/v0.11.0) |
 | [v0.10.1](v0.10.1.md) | 2026-10-28 | [Release](https://github.com/nnctroboticsclub/nbed/releases/tag/v0.10.1) |
 | [v0.10.0](v0.10.0.md) | 2026-10-28 | [Release](https://github.com/nnctroboticsclub/nbed/releases/tag/v0.10.0) |
 | [v0.9.0](v0.9.0.md) | 2026-10-26 | [Release](https://github.com/nnctroboticsclub/nbed/releases/tag/v0.9.0) |

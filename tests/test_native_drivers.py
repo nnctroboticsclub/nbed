@@ -31,6 +31,7 @@ class NativeDriverTests(unittest.TestCase):
       executable = directory / f"{family}-test.exe"
       drivers = {"spi": ("spi", "pin_mapper"),
                  "can": ("can", "pin_mapper"),
+                 "uart": ("uart", "pin_mapper"),
                  "exti": ("interrupt_in", "gpio", "pin_mapper"),
                  "f3_pwm": ("pwm", "timer_reservation", "pin_mapper"),
                  "pwm_outputs": ("pwm", "timer_reservation", "pin_mapper"),
@@ -63,6 +64,15 @@ class NativeDriverTests(unittest.TestCase):
 
   def test_f3_can(self):
     self.run_family("f3", "STM32F303x8", "can")
+
+  def test_f3_uart(self):
+    self.run_family("f3", "STM32F303x8", "uart")
+
+  def test_f4_uart(self):
+    self.run_family("f4", "STM32F446xx", "uart")
+
+  def test_f7_uart(self):
+    self.run_family("f7", "STM32F767xx", "uart")
 
   def test_f4_can(self):
     self.run_family("f4", "STM32F446xx", "can")

@@ -123,11 +123,17 @@ SYSCFGのDMAリマップや、nbedが予約したDMAの設定を変更しない�
 | TIM15 update | DMA1 CH5 | 未対応 |
 | TIM16 update | DMA1 CH3 | 未対応 |
 | TIM17 update | DMA1 CH1 | 未対応 |
-| USART1 TX / RX | DMA1 CH4 / CH5 | 未対応 |
+| USART1 TX / RX | DMA1 CH4 / CH5 | DMA2 stream7 / stream2、channel4 |
 | USART2 TX / RX | DMA1 CH7 / CH6 | DMA1 stream6 / stream5、channel4 |
 | USART3 TX / RX | 未対応 | DMA1 stream3 / stream1、channel4 |
 | UART4 TX / RX | 未対応 | DMA1 stream4 / stream2、channel4 |
-| USART6 TX / RX | 未対応 | F767ZIのみ DMA2 stream6 / stream1、channel5 |
+| UART5 TX / RX | 未対応 | DMA1 stream7 / stream0、channel4 |
+| USART6 TX / RX | 未対応 | DMA2 stream6 / stream1、channel5 |
+| UART7 TX / RX | 未対応 | F767ZIのみ DMA1 stream1 / stream3、channel5 |
+| UART8 TX / RX | 未対応 | F767ZIのみ DMA1 stream0 / stream6、channel5 |
+
+v0.11.0から、対応MCUの全UARTでDMAを使用できます。
+F7のUART5受信とUART8送信のように、channel番号が異なっても同じstreamは同時に使用できません。
 
 例えばF4/F7のTIM2 PWM DMAとUSART3受信DMA、TIM3 PWM DMAとUART4受信DMAは競合します。
 後から開始した側は `false` になり、先に使用している転送を維持します。

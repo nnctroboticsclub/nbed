@@ -3,8 +3,10 @@
 #include "f7/uart.h"
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <limits>
+#include <optional>
 
 #include "f7/pin_mapper.h"
 #include "stm32f7xx_hal.h"  // IWYU pragma: keep
@@ -14,24 +16,136 @@
 
 namespace nkrc::nbed::stm32::f7 {
 namespace {
-Uart*& Usart2Instance() {
-  static Uart* instance = nullptr;
-  return instance;
-}
+struct UartHardware {
+  USART_TypeDef* instance;
+  IRQn_Type irq;
+};
 
-Uart*& Usart3Instance() {
-  static Uart* instance = nullptr;
-  return instance;
-}
+// Keep this order aligned with UartPeripheral, preserving existing enum values.
+const std::array kHardware{
+    UartHardware{USART2, USART2_IRQn},
+    UartHardware{USART3, USART3_IRQn},
+    UartHardware{UART4, UART4_IRQn},
+    UartHardware{USART6, USART6_IRQn},
+    UartHardware{USART1, USART1_IRQn},
+    UartHardware{UART5, UART5_IRQn},
+    UartHardware{UART7, UART7_IRQn},
+    UartHardware{UART8, UART8_IRQn},
+};
+std::array<Uart*, kHardware.size()> instances{};
 
-Uart*& Uart4Instance() {
-  static Uart* instance = nullptr;
-  return instance;
-}
+struct UartPin {
+  UartPeripheral peripheral;
+  interface::PinName pin;
+  bool receive;
+  uint32_t alternate;
+};
 
-Uart*& Usart6Instance() {
-  static Uart* instance = nullptr;
-  return instance;
+// ST package pinout and GPIO alternate-function tables; see docs/uart.md.
+constexpr std::array kPins{
+    UartPin{UartPeripheral::kUsart1, interface::PinName::kPA10,
+            true, GPIO_AF7_USART1},
+    UartPin{UartPeripheral::kUsart1, interface::PinName::kPB15,
+            true, GPIO_AF4_USART1},
+    UartPin{UartPeripheral::kUsart1, interface::PinName::kPB7,
+            true, GPIO_AF7_USART1},
+    UartPin{UartPeripheral::kUsart1, interface::PinName::kPA9,
+            false, GPIO_AF7_USART1},
+    UartPin{UartPeripheral::kUsart1, interface::PinName::kPB14,
+            false, GPIO_AF4_USART1},
+    UartPin{UartPeripheral::kUsart1, interface::PinName::kPB6,
+            false, GPIO_AF7_USART1},
+    UartPin{UartPeripheral::kUsart2, interface::PinName::kPA3,
+            true, GPIO_AF7_USART2},
+    UartPin{UartPeripheral::kUsart2, interface::PinName::kPD6,
+            true, GPIO_AF7_USART2},
+    UartPin{UartPeripheral::kUsart2, interface::PinName::kPA2,
+            false, GPIO_AF7_USART2},
+    UartPin{UartPeripheral::kUsart2, interface::PinName::kPD5,
+            false, GPIO_AF7_USART2},
+    UartPin{UartPeripheral::kUsart3, interface::PinName::kPB11,
+            true, GPIO_AF7_USART3},
+    UartPin{UartPeripheral::kUsart3, interface::PinName::kPC11,
+            true, GPIO_AF7_USART3},
+    UartPin{UartPeripheral::kUsart3, interface::PinName::kPD9,
+            true, GPIO_AF7_USART3},
+    UartPin{UartPeripheral::kUsart3, interface::PinName::kPB10,
+            false, GPIO_AF7_USART3},
+    UartPin{UartPeripheral::kUsart3, interface::PinName::kPC10,
+            false, GPIO_AF7_USART3},
+    UartPin{UartPeripheral::kUsart3, interface::PinName::kPD8,
+            false, GPIO_AF7_USART3},
+    UartPin{UartPeripheral::kUart4, interface::PinName::kPA1,
+            true, GPIO_AF8_UART4},
+    UartPin{UartPeripheral::kUart4, interface::PinName::kPA11,
+            true, GPIO_AF6_UART4},
+    UartPin{UartPeripheral::kUart4, interface::PinName::kPC11,
+            true, GPIO_AF8_UART4},
+    UartPin{UartPeripheral::kUart4, interface::PinName::kPD0,
+            true, GPIO_AF8_UART4},
+    UartPin{UartPeripheral::kUart4, interface::PinName::kPA0,
+            false, GPIO_AF8_UART4},
+    UartPin{UartPeripheral::kUart4, interface::PinName::kPA12,
+            false, GPIO_AF6_UART4},
+    UartPin{UartPeripheral::kUart4, interface::PinName::kPC10,
+            false, GPIO_AF8_UART4},
+    UartPin{UartPeripheral::kUart4, interface::PinName::kPD1,
+            false, GPIO_AF8_UART4},
+    UartPin{UartPeripheral::kUart5, interface::PinName::kPB12,
+            true, GPIO_AF8_UART5},
+    UartPin{UartPeripheral::kUart5, interface::PinName::kPB5,
+            true, GPIO_AF1_UART5},
+    UartPin{UartPeripheral::kUart5, interface::PinName::kPB8,
+            true, GPIO_AF7_UART5},
+    UartPin{UartPeripheral::kUart5, interface::PinName::kPD2,
+            true, GPIO_AF8_UART5},
+    UartPin{UartPeripheral::kUart5, interface::PinName::kPB13,
+            false, GPIO_AF8_UART5},
+    UartPin{UartPeripheral::kUart5, interface::PinName::kPB6,
+            false, GPIO_AF1_UART5},
+    UartPin{UartPeripheral::kUart5, interface::PinName::kPB9,
+            false, GPIO_AF7_UART5},
+    UartPin{UartPeripheral::kUart5, interface::PinName::kPC12,
+            false, GPIO_AF8_UART5},
+    UartPin{UartPeripheral::kUsart6, interface::PinName::kPC7,
+            true, GPIO_AF8_USART6},
+    UartPin{UartPeripheral::kUsart6, interface::PinName::kPG9,
+            true, GPIO_AF8_USART6},
+    UartPin{UartPeripheral::kUsart6, interface::PinName::kPC6,
+            false, GPIO_AF8_USART6},
+    UartPin{UartPeripheral::kUsart6, interface::PinName::kPG14,
+            false, GPIO_AF8_USART6},
+    UartPin{UartPeripheral::kUart7, interface::PinName::kPA8,
+            true, GPIO_AF12_UART7},
+    UartPin{UartPeripheral::kUart7, interface::PinName::kPB3,
+            true, GPIO_AF12_UART7},
+    UartPin{UartPeripheral::kUart7, interface::PinName::kPE7,
+            true, GPIO_AF8_UART7},
+    UartPin{UartPeripheral::kUart7, interface::PinName::kPF6,
+            true, GPIO_AF8_UART7},
+    UartPin{UartPeripheral::kUart7, interface::PinName::kPA15,
+            false, GPIO_AF12_UART7},
+    UartPin{UartPeripheral::kUart7, interface::PinName::kPB4,
+            false, GPIO_AF12_UART7},
+    UartPin{UartPeripheral::kUart7, interface::PinName::kPE8,
+            false, GPIO_AF8_UART7},
+    UartPin{UartPeripheral::kUart7, interface::PinName::kPF7,
+            false, GPIO_AF8_UART7},
+    UartPin{UartPeripheral::kUart8, interface::PinName::kPE0,
+            true, GPIO_AF8_UART8},
+    UartPin{UartPeripheral::kUart8, interface::PinName::kPE1,
+            false, GPIO_AF8_UART8},
+};
+
+std::optional<uint32_t> AlternateFunction(UartPeripheral peripheral,
+                                         interface::PinName pin, bool receive) {
+  for (const auto& route : kPins) {
+    if (route.peripheral == peripheral && route.pin == pin &&
+        route.receive == receive) {
+      return route.alternate;
+    }
+  }
+  return std::nullopt;
 }
 
 Uart*& Console() {
@@ -40,18 +154,39 @@ Uart*& Console() {
 }
 
 void EnableUartClock(UartPeripheral peripheral) {
-  if (peripheral == UartPeripheral::kUsart2) {
-    __HAL_RCC_USART2_CONFIG(RCC_USART2CLKSOURCE_PCLK1);
-    __HAL_RCC_USART2_CLK_ENABLE();
-  } else if (peripheral == UartPeripheral::kUsart3) {
-    __HAL_RCC_USART3_CONFIG(RCC_USART3CLKSOURCE_PCLK1);
-    __HAL_RCC_USART3_CLK_ENABLE();
-  } else if (peripheral == UartPeripheral::kUart4) {
-    __HAL_RCC_UART4_CONFIG(RCC_UART4CLKSOURCE_PCLK1);
-    __HAL_RCC_UART4_CLK_ENABLE();
-  } else {
-    __HAL_RCC_USART6_CONFIG(RCC_USART6CLKSOURCE_PCLK2);
-    __HAL_RCC_USART6_CLK_ENABLE();
+  switch (peripheral) {
+    case UartPeripheral::kUsart2:
+      __HAL_RCC_USART2_CONFIG(RCC_USART2CLKSOURCE_PCLK1);
+      __HAL_RCC_USART2_CLK_ENABLE();
+      break;
+    case UartPeripheral::kUsart3:
+      __HAL_RCC_USART3_CONFIG(RCC_USART3CLKSOURCE_PCLK1);
+      __HAL_RCC_USART3_CLK_ENABLE();
+      break;
+    case UartPeripheral::kUart4:
+      __HAL_RCC_UART4_CONFIG(RCC_UART4CLKSOURCE_PCLK1);
+      __HAL_RCC_UART4_CLK_ENABLE();
+      break;
+    case UartPeripheral::kUsart6:
+      __HAL_RCC_USART6_CONFIG(RCC_USART6CLKSOURCE_PCLK2);
+      __HAL_RCC_USART6_CLK_ENABLE();
+      break;
+    case UartPeripheral::kUsart1:
+      __HAL_RCC_USART1_CONFIG(RCC_USART1CLKSOURCE_PCLK2);
+      __HAL_RCC_USART1_CLK_ENABLE();
+      break;
+    case UartPeripheral::kUart5:
+      __HAL_RCC_UART5_CONFIG(RCC_UART5CLKSOURCE_PCLK1);
+      __HAL_RCC_UART5_CLK_ENABLE();
+      break;
+    case UartPeripheral::kUart7:
+      __HAL_RCC_UART7_CONFIG(RCC_UART7CLKSOURCE_PCLK1);
+      __HAL_RCC_UART7_CLK_ENABLE();
+      break;
+    case UartPeripheral::kUart8:
+      __HAL_RCC_UART8_CONFIG(RCC_UART8CLKSOURCE_PCLK1);
+      __HAL_RCC_UART8_CLK_ENABLE();
+      break;
   }
 }
 }  // namespace
@@ -92,15 +227,7 @@ bool Uart::Initialize() {
   }
   instance = this;
   EnableUartClock(peripheral_);
-  if (peripheral_ == UartPeripheral::kUsart2) {
-    handle_.Instance = USART2;
-  } else if (peripheral_ == UartPeripheral::kUsart3) {
-    handle_.Instance = USART3;
-  } else if (peripheral_ == UartPeripheral::kUart4) {
-    handle_.Instance = UART4;
-  } else {
-    handle_.Instance = USART6;
-  }
+  handle_.Instance = kHardware[static_cast<unsigned>(peripheral_)].instance;
   handle_.Init.BaudRate = baud_rate_;
   handle_.Init.WordLength = UART_WORDLENGTH_8B;
   handle_.Init.StopBits = UART_STOPBITS_1;
@@ -114,13 +241,11 @@ bool Uart::Initialize() {
   gpio.Mode = GPIO_MODE_AF_PP;
   gpio.Pull = GPIO_NOPULL;
   gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  gpio.Alternate =
-      peripheral_ == UartPeripheral::kUart4 ? GPIO_AF8_UART4 : GPIO_AF7_USART2;
-  if (peripheral_ == UartPeripheral::kUsart6) {
-    gpio.Alternate = GPIO_AF8_USART6;
-  }
-  if (!PinMapper::ConfigureGpio(rx_, gpio) ||
-      !PinMapper::ConfigureGpio(tx_, gpio)) {
+  const auto configure_pin = [&](interface::PinName pin, bool receive) {
+    gpio.Alternate = *AlternateFunction(peripheral_, pin, receive);
+    return PinMapper::ConfigureGpio(pin, gpio);
+  };
+  if (!configure_pin(rx_, true) || !configure_pin(tx_, false)) {
     instance = nullptr;
     return false;
   }
@@ -212,55 +337,20 @@ void Uart::OnRxComplete() {
 #include "detail/uart_dma_impl.h"
 
 bool Uart::IsValidPinPair() const {
-  using interface::PinName;
-  if (!PinMapper::IsValidPinPair(rx_, tx_)) {
-    return false;
-  }
-  if (peripheral_ == UartPeripheral::kUsart2) {
-    return (rx_ == PinName::kPA3 || rx_ == PinName::kPD6) &&
-           (tx_ == PinName::kPA2 || tx_ == PinName::kPD5);
-  }
-  if (peripheral_ == UartPeripheral::kUsart3) {
-    return (rx_ == PinName::kPB11 || rx_ == PinName::kPC11 ||
-            rx_ == PinName::kPD9) &&
-           (tx_ == PinName::kPB10 || tx_ == PinName::kPC10 ||
-            tx_ == PinName::kPD8);
-  }
-  if (peripheral_ == UartPeripheral::kUsart6) {
-    return (rx_ == PinName::kPC7 || rx_ == PinName::kPG9) &&
-           (tx_ == PinName::kPC6 || tx_ == PinName::kPG14);
-  }
-  return peripheral_ == UartPeripheral::kUart4 &&
-         (rx_ == PinName::kPA1 || rx_ == PinName::kPC11 ||
-          rx_ == PinName::kPD0) &&
-         (tx_ == PinName::kPA0 || tx_ == PinName::kPC10 ||
-          tx_ == PinName::kPD1);
+  return PinMapper::IsValidPinPair(rx_, tx_) &&
+         AlternateFunction(peripheral_, rx_, true).has_value() &&
+         AlternateFunction(peripheral_, tx_, false).has_value();
 }
 
 IRQn_Type Uart::Irq() const {
-  if (peripheral_ == UartPeripheral::kUsart2) {
-    return USART2_IRQn;
-  }
-  if (peripheral_ == UartPeripheral::kUsart3) {
-    return USART3_IRQn;
-  }
-  if (peripheral_ == UartPeripheral::kUsart6) {
-    return USART6_IRQn;
-  }
-  return UART4_IRQn;
+  return kHardware[static_cast<unsigned>(peripheral_)].irq;
 }
 
 Uart*& Uart::InstanceFor(UartPeripheral peripheral) {
-  if (peripheral == UartPeripheral::kUsart2) {
-    return Usart2Instance();
-  }
-  if (peripheral == UartPeripheral::kUsart3) {
-    return Usart3Instance();
-  }
-  if (peripheral == UartPeripheral::kUsart6) {
-    return Usart6Instance();
-  }
-  return Uart4Instance();
+  const auto index = static_cast<unsigned>(peripheral);
+  // Invalid inputs must not alias an existing peripheral's owner.
+  static Uart* invalid = nullptr;
+  return index < instances.size() ? instances[index] : invalid;
 }
 
 extern "C" {
@@ -293,9 +383,17 @@ void USART2_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUsart2); }
 
 void USART3_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUsart3); }
 
+void UART4_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUart4); }
+
 void USART6_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUsart6); }
 
-void UART4_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUart4); }
+void USART1_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUsart1); }
+
+void UART5_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUart5); }
+
+void UART7_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUart7); }
+
+void UART8_IRQHandler() { Uart::HandleInterrupt(UartPeripheral::kUart8); }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart) {
   Uart::HandleTxComplete(huart);

@@ -11,7 +11,14 @@
 
 namespace nkrc::nbed::stm32::f4 {
 
-enum class UartPeripheral : uint8_t { kUsart2, kUsart3, kUart4 };
+enum class UartPeripheral : uint8_t {
+  kUsart2,
+  kUsart3,
+  kUart4,
+  kUsart1,
+  kUart5,
+  kUsart6
+};
 
 class Uart final : public interface::Uart {
  public:

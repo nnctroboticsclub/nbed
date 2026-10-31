@@ -2,18 +2,23 @@
 interface::DmaRequest Uart::DmaRequestFor(bool receive) const {
   using interface::DmaRequest;
   switch (peripheral_) {
-#if defined(STM32F303x8)
     case UartPeripheral::kUsart1:
       return receive ? DmaRequest::kUsart1Rx : DmaRequest::kUsart1Tx;
-#else
+#if !defined(STM32F303x8)
     case UartPeripheral::kUsart3:
       return receive ? DmaRequest::kUsart3Rx : DmaRequest::kUsart3Tx;
     case UartPeripheral::kUart4:
       return receive ? DmaRequest::kUart4Rx : DmaRequest::kUart4Tx;
-#endif
-#if defined(STM32F767xx)
+    case UartPeripheral::kUart5:
+      return receive ? DmaRequest::kUart5Rx : DmaRequest::kUart5Tx;
     case UartPeripheral::kUsart6:
       return receive ? DmaRequest::kUsart6Rx : DmaRequest::kUsart6Tx;
+#endif
+#if defined(STM32F767xx)
+    case UartPeripheral::kUart7:
+      return receive ? DmaRequest::kUart7Rx : DmaRequest::kUart7Tx;
+    case UartPeripheral::kUart8:
+      return receive ? DmaRequest::kUart8Rx : DmaRequest::kUart8Tx;
 #endif
     default:
       return receive ? DmaRequest::kUsart2Rx : DmaRequest::kUsart2Tx;
@@ -92,9 +97,9 @@ Uart* Uart::FindHandle(UART_HandleTypeDef* handle) {
 #if defined(STM32F303x8)
                                         UartPeripheral::kUsart2
 #elif defined(STM32F767xx)
-                                        UartPeripheral::kUsart6
+                                        UartPeripheral::kUart8
 #else
-                                        UartPeripheral::kUart4
+                                        UartPeripheral::kUsart6
 #endif
                                     );
        ++index) {
