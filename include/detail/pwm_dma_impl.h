@@ -48,6 +48,16 @@ bool Pwm::SendDataDma(std::span<const uint32_t> data) {
     case PwmTimer::kTim17:
       request = DmaRequest::kTim17Update;
       break;
+#else
+    case PwmTimer::kTim4:
+      request = DmaRequest::kTim4Update;
+      break;
+    case PwmTimer::kTim5:
+      request = DmaRequest::kTim5Update;
+      break;
+    case PwmTimer::kTim8:
+      request = DmaRequest::kTim8Update;
+      break;
 #endif
     default:
       return false;

@@ -30,17 +30,18 @@ inline std::array<DMA_Instance, 23> dma_instances{};
 #define DMA2_Stream7 (&dma_instances[22])
 #define __HAL_RCC_DMA1_CLK_ENABLE() ((void)0)
 #define __HAL_RCC_DMA2_CLK_ENABLE() ((void)0)
-inline constexpr uint32_t DMA_CHANNEL_3 = 3, DMA_CHANNEL_4 = 4,
-                          DMA_CHANNEL_5 = 5, DMA_CHANNEL_6 = 6,
+inline constexpr uint32_t DMA_CHANNEL_2 = 2, DMA_CHANNEL_3 = 3,
+                          DMA_CHANNEL_4 = 4, DMA_CHANNEL_5 = 5,
+                          DMA_CHANNEL_6 = 6, DMA_CHANNEL_7 = 7,
                           DMA_FIFOMODE_DISABLE = 0, DMA_MBURST_SINGLE = 0,
                           DMA_PBURST_SINGLE = 0, DMA_PERIPH_TO_MEMORY = 0,
                           DMA_MEMORY_TO_PERIPH = 1, DMA_PINC_DISABLE = 0,
                           DMA_MINC_ENABLE = 1, DMA_PDATAALIGN_WORD = 4,
                           DMA_PDATAALIGN_BYTE = 1, DMA_MDATAALIGN_WORD = 4,
                           DMA_PDATAALIGN_HALFWORD = 2,
-                          DMA_MDATAALIGN_HALFWORD = 2,
-                          DMA_MDATAALIGN_BYTE = 1, DMA_NORMAL = 0,
-                          DMA_PRIORITY_VERY_HIGH = 3, DMA_PRIORITY_HIGH = 2;
+                          DMA_MDATAALIGN_HALFWORD = 2, DMA_MDATAALIGN_BYTE = 1,
+                          DMA_NORMAL = 0, DMA_PRIORITY_VERY_HIGH = 3,
+                          DMA_PRIORITY_HIGH = 2;
 
 struct DMA_InitTypeDef {
   uint32_t Channel{}, Direction{}, PeriphInc{}, MemInc{}, PeriphDataAlignment{},
@@ -115,7 +116,8 @@ inline const uint8_t* uart_dma_tx_data{};
 inline uint8_t* uart_dma_rx_data{};
 
 inline HAL_StatusTypeDef HAL_UART_Transmit_DMA(UART_HandleTypeDef* handle,
-                                               const uint8_t* data, uint16_t size) {
+                                               const uint8_t* data,
+                                               uint16_t size) {
   uart_dma_tx_size = size;
   uart_dma_tx_data = data;
   last_dma_handle = handle->hdmatx;

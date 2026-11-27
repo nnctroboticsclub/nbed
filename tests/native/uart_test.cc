@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <memory>
@@ -57,28 +58,28 @@ struct Unit {
 
 const std::array kUnits{
 #ifdef STM32F303x8
-    Unit{kUsart1, 1, USART1, USART1_IRQn, USART1_IRQHandler,
-         DMA1_Channel4, DMA1_Channel5, 0},
-    Unit{kUsart2, 2, USART2, USART2_IRQn, USART2_IRQHandler,
-         DMA1_Channel7, DMA1_Channel6, 0},
+    Unit{kUsart1, 1, USART1, USART1_IRQn, USART1_IRQHandler, DMA1_Channel4,
+         DMA1_Channel5, 0},
+    Unit{kUsart2, 2, USART2, USART2_IRQn, USART2_IRQHandler, DMA1_Channel7,
+         DMA1_Channel6, 0},
 #else
-    Unit{kUsart1, 1, USART1, USART1_IRQn, USART1_IRQHandler,
-         DMA2_Stream7, DMA2_Stream2, DMA_CHANNEL_4},
-    Unit{kUsart2, 2, USART2, USART2_IRQn, USART2_IRQHandler,
-         DMA1_Stream6, DMA1_Stream5, DMA_CHANNEL_4},
-    Unit{kUsart3, 3, USART3, USART3_IRQn, USART3_IRQHandler,
-         DMA1_Stream3, DMA1_Stream1, DMA_CHANNEL_4},
-    Unit{kUart4, 4, UART4, UART4_IRQn, UART4_IRQHandler,
-         DMA1_Stream4, DMA1_Stream2, DMA_CHANNEL_4},
-    Unit{kUart5, 5, UART5, UART5_IRQn, UART5_IRQHandler,
-         DMA1_Stream7, DMA1_Stream0, DMA_CHANNEL_4},
-    Unit{kUsart6, 6, USART6, USART6_IRQn, USART6_IRQHandler,
-         DMA2_Stream6, DMA2_Stream1, DMA_CHANNEL_5},
+    Unit{kUsart1, 1, USART1, USART1_IRQn, USART1_IRQHandler, DMA2_Stream7,
+         DMA2_Stream2, DMA_CHANNEL_4},
+    Unit{kUsart2, 2, USART2, USART2_IRQn, USART2_IRQHandler, DMA1_Stream6,
+         DMA1_Stream5, DMA_CHANNEL_4},
+    Unit{kUsart3, 3, USART3, USART3_IRQn, USART3_IRQHandler, DMA1_Stream3,
+         DMA1_Stream1, DMA_CHANNEL_4},
+    Unit{kUart4, 4, UART4, UART4_IRQn, UART4_IRQHandler, DMA1_Stream4,
+         DMA1_Stream2, DMA_CHANNEL_4},
+    Unit{kUart5, 5, UART5, UART5_IRQn, UART5_IRQHandler, DMA1_Stream7,
+         DMA1_Stream0, DMA_CHANNEL_4},
+    Unit{kUsart6, 6, USART6, USART6_IRQn, USART6_IRQHandler, DMA2_Stream6,
+         DMA2_Stream1, DMA_CHANNEL_5},
 #ifdef STM32F767xx
-    Unit{kUart7, 7, UART7, UART7_IRQn, UART7_IRQHandler,
-         DMA1_Stream1, DMA1_Stream3, DMA_CHANNEL_5},
-    Unit{kUart8, 8, UART8, UART8_IRQn, UART8_IRQHandler,
-         DMA1_Stream0, DMA1_Stream6, DMA_CHANNEL_5},
+    Unit{kUart7, 7, UART7, UART7_IRQn, UART7_IRQHandler, DMA1_Stream1,
+         DMA1_Stream3, DMA_CHANNEL_5},
+    Unit{kUart8, 8, UART8, UART8_IRQn, UART8_IRQHandler, DMA1_Stream0,
+         DMA1_Stream6, DMA_CHANNEL_5},
 #endif
 #endif
 };
@@ -291,8 +292,8 @@ int main() {
   // All UART owners and interrupt handlers must work independently at once.
   std::vector<std::unique_ptr<Uart>> owners;
   for (const auto& unit : kUnits) {
-    auto owner = std::make_unique<Uart>(unit.peripheral,
-        Pins(unit.peripheral, true).front().pin,
+    auto owner = std::make_unique<Uart>(
+        unit.peripheral, Pins(unit.peripheral, true).front().pin,
         Pins(unit.peripheral, false).front().pin);
     assert(owner->Initialize());
     owners.push_back(std::move(owner));

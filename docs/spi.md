@@ -93,11 +93,11 @@ CRC、ハードウェア NSS、MISO/MOSI の省略には対応していません
 | F446RE SPI1 | PCLK2 | 45 MHz |
 | F446RE SPI2 / SPI3 | PCLK1 | 22.5 MHz |
 | F303K8 SPI1 | PCLK2 | 24 MHz |
-| F767ZI SPI1 | PCLK2 | 54 MHz |
+| F767ZI SPI1 / SPI4 / SPI5 / SPI6 | PCLK2 | 54 MHz |
 | F767ZI SPI2 / SPI3 | PCLK1 | 27 MHz |
 
-既定のクロックで 1 MHz を指定した場合、F446RE は 703125 Hz、F303K8 は 1 MHz です。
-F767ZI では 1 MHz の指定が843750 Hzになります。
+既定のクロックで 1 MHz を指定すると、F446RE は 703,125 Hz、F303K8 は 1 MHz、
+F767ZI は 843,750 Hz になります。
 F303K8 の既定クロックでの最大実速度は 16 MHz です。相手の上限や配線条件に合う値を指定し、
 `System::Initialize()` とクロック設定を済ませてから SPI を初期化してください。
 初期化後にクロックを変更する場合は SPI も作り直します。
@@ -107,15 +107,12 @@ F303K8 の既定クロックでの最大実速度は 16 MHz です。相手の�
 各行の選択肢は組み合わせて使えます。CS は通常の GPIO を別途選びます。
 SWD、UART、PWM などと同じピンを同時に使用しないでください。
 
-| MCU | 周辺機能 | SCK | MISO | MOSI |
-| --- | --- | --- | --- | --- |
-| F446RE | `kSpi1` | PA5 / PB3 | PA6 / PB4 | PA7 / PB5 |
-| F446RE | `kSpi2` | PA9 / PB10 / PB13 / PC7 | PB14 / PC2 | PB15 / PC1 / PC3 |
-| F446RE | `kSpi3` | PB3 / PC10 | PB4 / PC11 | PB0 / PB2 / PB5 / PC1 / PC12 |
-| F303K8 | `kSpi1` | PA5 / PB3 | PA6 / PB4 | PA7 / PB5 |
-| F767ZI | `kSpi1` | PA5 / PB3 / PG11 | PA6 / PB4 / PG9 | PA7 / PB5 / PD7 |
-| F767ZI | `kSpi2` | PA9 / PA12 / PB10 / PB13 / PD3 | PB14 / PC2 | PB15 / PC1 / PC3 |
-| F767ZI | `kSpi3` | PB3 / PC10 | PB4 / PC11 | PB2 / PB5 / PC12 / PD6 |
+- [F303K8 の SPI1](pinout.md#f303k8-spi)
+- [F446RE の SPI1～3](pinout.md#f446re-spi)
+- [F767ZI の SPI1～6](pinout.md#f767zi-spi)
+
+F446RE の LQFP64 では SPI4 の 3 信号を配線できません。F767ZI の SPI6 はピンによって
+AF5 または AF8 を使い、nbed が信号ごとに設定します。
 
 F446RE の Arduino D13/D12/D11 は PA5/PA6/PA7、F303K8 は PB3/PB4/PB5 です。
 F446RE と F303K8 の SCK は基板上 LED と共用なので、SPI 使用中は LED 用 `DigitalOut` を作りません。
@@ -143,9 +140,8 @@ F303K8 では環境名を `f3-spi-test` に変えます。成功時には `SPI l
 F767ZI では `f7-spi-test` を使用します。基板上の Ethernet/USB などとの競合と
 はんだブリッジについては [F767ZI ガイド](f767zi.md)を参照してください。
 サンプルは同時送受信のデータ一致、送信、受信時のダミー送信を確認します。
-2026-10-23 に全12環境のビルドとホスト上の回帰テスト28件が成功しました。
-既存の任意実行の PlatformIO 統合テスト8件はスキップしています。
-実機での通信・波形の確認は未実施です。
+ビルドと代替 HAL の検証手順は [開発ガイド](development.md#ホスト上の回帰テスト)にあります。
+上のループバック手順は実機での通信・波形の確認に使います。
 
 ## 参照
 

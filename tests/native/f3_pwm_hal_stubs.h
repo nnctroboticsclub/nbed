@@ -28,6 +28,26 @@ inline TIM_TypeDef tim1, tim2, tim3, tim15, tim16, tim17;
 #define __HAL_RCC_TIM16_CLK_ENABLE() (tim16.clock_enabled = true)
 #define __HAL_RCC_TIM17_CLK_ENABLE() (tim17.clock_enabled = true)
 
+inline TIM_TypeDef tim4, tim5, tim8, tim9, tim10, tim11, tim12, tim13, tim14;
+#define TIM4 (&tim4)
+#define __HAL_RCC_TIM4_CLK_ENABLE() (tim4.clock_enabled = true)
+#define TIM5 (&tim5)
+#define __HAL_RCC_TIM5_CLK_ENABLE() (tim5.clock_enabled = true)
+#define TIM8 (&tim8)
+#define __HAL_RCC_TIM8_CLK_ENABLE() (tim8.clock_enabled = true)
+#define TIM9 (&tim9)
+#define __HAL_RCC_TIM9_CLK_ENABLE() (tim9.clock_enabled = true)
+#define TIM10 (&tim10)
+#define __HAL_RCC_TIM10_CLK_ENABLE() (tim10.clock_enabled = true)
+#define TIM11 (&tim11)
+#define __HAL_RCC_TIM11_CLK_ENABLE() (tim11.clock_enabled = true)
+#define TIM12 (&tim12)
+#define __HAL_RCC_TIM12_CLK_ENABLE() (tim12.clock_enabled = true)
+#define TIM13 (&tim13)
+#define __HAL_RCC_TIM13_CLK_ENABLE() (tim13.clock_enabled = true)
+#define TIM14 (&tim14)
+#define __HAL_RCC_TIM14_CLK_ENABLE() (tim14.clock_enabled = true)
+
 inline constexpr uint32_t GPIO_AF1_TIM1 = 1, GPIO_AF1_TIM2 = 1,
                           GPIO_AF2_TIM3 = 2, GPIO_AF6_TIM1 = 6,
                           GPIO_AF10_TIM2 = 10, GPIO_AF10_TIM3 = 10,
@@ -53,7 +73,8 @@ inline constexpr uint32_t TIM_OCPOLARITY_LOW = 2, TIM_OCNPOLARITY_HIGH = 0,
   ((instance) == TIM1 || (instance) == TIM15 || (instance) == TIM16 || \
    (instance) == TIM17)
 #else
-#define IS_TIM_BREAK_INSTANCE(instance) ((instance) == TIM1)
+#define IS_TIM_BREAK_INSTANCE(instance) \
+  ((instance) == TIM1 || (instance) == TIM8)
 #endif
 inline constexpr uint32_t RCC_HCLK_DIV1 = 1, RCC_HCLK_DIV2 = 2,
                           RCC_HCLK_DIV4 = 4;
@@ -201,3 +222,36 @@ inline constexpr uint32_t TIM_CR1_CEN = 1, TIM_DMA_UPDATE = 256;
   ((handle)->Instance->DIER |= (value))
 #define __HAL_TIM_DISABLE_DMA(handle, value) \
   ((handle)->Instance->DIER &= ~(value))
+
+inline constexpr uint32_t TIM_AUTORELOAD_PRELOAD_DISABLE = 0,
+                          TIM_ENCODERMODE_TI12 = 3, TIM_ICPOLARITY_RISING = 0,
+                          TIM_ICSELECTION_DIRECTTI = 1, TIM_ICPSC_DIV1 = 0,
+                          TIM_CHANNEL_ALL = 60;
+
+struct TIM_Encoder_InitTypeDef {
+  uint32_t EncoderMode{}, IC1Polarity{}, IC1Selection{}, IC1Prescaler{},
+      IC1Filter{}, IC2Polarity{}, IC2Selection{}, IC2Prescaler{}, IC2Filter{};
+};
+
+inline TIM_HandleTypeDef last_encoder_init;
+
+inline HAL_StatusTypeDef HAL_TIM_Encoder_Init(TIM_HandleTypeDef* handle,
+                                              TIM_Encoder_InitTypeDef*) {
+  last_encoder_init = *handle;
+  handle->Instance->CNT = 0;
+  return HAL_OK;
+}
+
+inline HAL_StatusTypeDef HAL_TIM_Encoder_Start(TIM_HandleTypeDef*, uint32_t) {
+  return HAL_OK;
+}
+
+inline HAL_StatusTypeDef HAL_TIM_Encoder_Stop(TIM_HandleTypeDef*, uint32_t) {
+  return HAL_OK;
+}
+
+inline HAL_StatusTypeDef HAL_TIM_Encoder_DeInit(TIM_HandleTypeDef*) {
+  return HAL_OK;
+}
+
+#define __HAL_TIM_GET_COUNTER(handle) ((handle)->Instance->CNT)

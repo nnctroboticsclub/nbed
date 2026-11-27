@@ -50,6 +50,9 @@ constexpr std::array kRoutes{
     Route{DmaRequest::kTim1Update, 13, DMA_CHANNEL_6},
     Route{DmaRequest::kTim2Update, 1, DMA_CHANNEL_3},
     Route{DmaRequest::kTim3Update, 2, DMA_CHANNEL_5},
+    Route{DmaRequest::kTim4Update, 6, DMA_CHANNEL_2},
+    Route{DmaRequest::kTim5Update, 0, DMA_CHANNEL_6},
+    Route{DmaRequest::kTim8Update, 9, DMA_CHANNEL_7},
     Route{DmaRequest::kUsart1Tx, 15, DMA_CHANNEL_4},
     Route{DmaRequest::kUsart1Rx, 10, DMA_CHANNEL_4},
     Route{DmaRequest::kUsart2Tx, 6, DMA_CHANNEL_4},
@@ -121,12 +124,12 @@ bool Dma::Initialize(DmaRequest request, bool receive, bool word,
         receive ? DMA_PERIPH_TO_MEMORY : DMA_MEMORY_TO_PERIPH;
     handle_.Init.PeriphInc = DMA_PINC_DISABLE;
     handle_.Init.MemInc = DMA_MINC_ENABLE;
-    handle_.Init.PeriphDataAlignment =
-        word ? DMA_PDATAALIGN_WORD :
-        halfword ? DMA_PDATAALIGN_HALFWORD : DMA_PDATAALIGN_BYTE;
-    handle_.Init.MemDataAlignment =
-        word ? DMA_MDATAALIGN_WORD :
-        halfword ? DMA_MDATAALIGN_HALFWORD : DMA_MDATAALIGN_BYTE;
+    handle_.Init.PeriphDataAlignment = word       ? DMA_PDATAALIGN_WORD
+                                       : halfword ? DMA_PDATAALIGN_HALFWORD
+                                                  : DMA_PDATAALIGN_BYTE;
+    handle_.Init.MemDataAlignment = word       ? DMA_MDATAALIGN_WORD
+                                    : halfword ? DMA_MDATAALIGN_HALFWORD
+                                               : DMA_MDATAALIGN_BYTE;
     handle_.Init.Mode = DMA_NORMAL;
     handle_.Init.Priority = word ? DMA_PRIORITY_VERY_HIGH : DMA_PRIORITY_HIGH;
     if (HAL_DMA_Init(&handle_) != HAL_OK) {

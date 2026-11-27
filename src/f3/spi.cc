@@ -2,17 +2,34 @@
 
 #include "f3/spi.h"
 
+#include <array>
+
 #include "detail/spi_master.h"
 #include "f3/pin_mapper.h"
-#include "stm32f3xx_hal_gpio_ex.h"
+#include "f3/pin_routes.h"
 #include "stm32f3xx_hal_rcc.h"
 
 namespace nkrc::nbed::stm32::f3 {
 namespace {
-Spi*& Spi1Instance() {
-  static Spi* instance = nullptr;
-  return instance;
+
+struct SpiHardware {
+  SPI_TypeDef* instance;
+  bool apb2;
+};
+
+const std::array kHardware{
+    SpiHardware{SPI1, true},
+};
+std::array<Spi*, kHardware.size()> owners{};
+
+void EnableSpiClock(SpiPeripheral peripheral) {
+  switch (peripheral) {
+    case SpiPeripheral::kSpi1:
+      __HAL_RCC_SPI1_CLK_ENABLE();
+      break;
+  }
 }
+
 }  // namespace
 
 Spi::Spi(SpiPeripheral peripheral, interface::PinName sck,
@@ -30,7 +47,7 @@ Spi::Spi(SpiPeripheral peripheral, interface::PinName sck,
 Spi::~Spi() {
   if (initialized_) {
     (void)HAL_SPI_DeInit(&handle_);
-    Spi1Instance() = nullptr;
+    owners[static_cast<unsigned>(peripheral_)] = nullptr;
   }
 }
 
@@ -38,36 +55,49 @@ bool Spi::Initialize() {
   if (initialized_) {
     return true;
   }
-  if (!IsValidPinSet() || Spi1Instance() != nullptr) {
+  const auto index = static_cast<unsigned>(peripheral_);
+  if (index >= kHardware.size() || owners[index] != nullptr || sck_ == miso_ ||
+      sck_ == mosi_ || miso_ == mosi_) {
     return false;
   }
-  // DS9866: master SCK <= 24 MHz at the Nucleo's 3.3 V supply.
+  const auto number = static_cast<uint8_t>(index + 1U);
+  const std::array routes{
+      detail::FindPinRoute(kSpiPins, number, PinSignal::kSck, sck_),
+      detail::FindPinRoute(kSpiPins, number, PinSignal::kMiso, miso_),
+      detail::FindPinRoute(kSpiPins, number, PinSignal::kMosi, mosi_),
+  };
+  for (const auto* route : routes) {
+    if (route == nullptr || !PinMapper::IsValidPin(route->pin)) {
+      return false;
+    }
+  }
+  const auto& hardware = kHardware[index];
   const auto timing = detail::ComputeSpiTiming(HAL_RCC_GetPCLK2Freq(),
                                                frequency_hz_, 24'000'000);
   if (!timing || !detail::ConfigureSpiMaster(handle_, timing->prescaler, mode_,
                                              bit_order_)) {
     return false;
   }
-  Spi1Instance() = this;
-  __HAL_RCC_SPI1_CLK_ENABLE();
-  handle_.Instance = SPI1;
+  owners[index] = this;
+  handle_.Instance = hardware.instance;
   handle_.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   handle_.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  EnableSpiClock(peripheral_);
+  if (HAL_SPI_Init(&handle_) != HAL_OK) {
+    (void)HAL_SPI_DeInit(&handle_);
+    owners[index] = nullptr;
+    return false;
+  }
 
   GPIO_InitTypeDef gpio{};
   gpio.Mode = GPIO_MODE_AF_PP;
   gpio.Pull = GPIO_NOPULL;
   gpio.Speed = GPIO_SPEED_FREQ_HIGH;
-  gpio.Alternate = GPIO_AF5_SPI1;
-  if (!PinMapper::ConfigureGpio(sck_, gpio) ||
-      !PinMapper::ConfigureGpio(miso_, gpio) ||
-      !PinMapper::ConfigureGpio(mosi_, gpio) ||
-      HAL_SPI_Init(&handle_) != HAL_OK) {
-    (void)HAL_SPI_DeInit(&handle_);
-    Spi1Instance() = nullptr;
-    return false;
+  for (const auto* route : routes) {
+    gpio.Alternate = route->value;
+    (void)PinMapper::ConfigureGpio(route->pin, gpio);
   }
-  // Drive the configured idle SCK level before the caller asserts CS.
+  // CS をアサートする前に、SCK をモードで指定した待機レベルにする。
   __HAL_SPI_ENABLE(&handle_);
   actual_frequency_hz_ = timing->actual_hz;
   initialized_ = true;
@@ -87,14 +117,6 @@ bool Spi::Receive(std::span<uint8_t> data, uint32_t timeout_ms) {
 bool Spi::Transfer(std::span<const uint8_t> tx, std::span<uint8_t> rx,
                    uint32_t timeout_ms) {
   return initialized_ && detail::SpiTransfer(handle_, tx, rx, timeout_ms);
-}
-
-bool Spi::IsValidPinSet() const {
-  using interface::PinName;
-  return peripheral_ == SpiPeripheral::kSpi1 &&
-         (sck_ == PinName::kPA5 || sck_ == PinName::kPB3) &&
-         (miso_ == PinName::kPA6 || miso_ == PinName::kPB4) &&
-         (mosi_ == PinName::kPA7 || mosi_ == PinName::kPB5);
 }
 
 }  // namespace nkrc::nbed::stm32::f3

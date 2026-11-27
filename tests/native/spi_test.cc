@@ -173,9 +173,9 @@ int main() {
         assert(spi.Initialize() && last_spi_init.Instance == SPI3);
         assert(spi.GetFrequencyHz() == 703125);
         assert(gpio_inits.back().second.Alternate ==
-               (mosi == PinName::kPB0 || mosi == PinName::kPB2
-                    ? GPIO_AF7_SPI3
-                    : GPIO_AF6_SPI3));
+               (mosi == PinName::kPB0 || mosi == PinName::kPB2 ? GPIO_AF7_SPI3
+                : mosi == PinName::kPC1 ? GPIO_AF5_SPI1
+                                        : GPIO_AF6_SPI3));
       }
     }
   }
@@ -220,5 +220,33 @@ int main() {
   Spi bad_mosi(SpiPeripheral::kSpi3, PinName::kPC10, PinName::kPC11,
                PinName::kPC1);
   assert(!bad_sck.Initialize() && !bad_mosi.Initialize());
+  using enum PinName;
+  using Route = std::pair<PinName, uint32_t>;
+  const auto check_routes = [](SpiPeripheral peripheral, SPI_TypeDef* instance,
+                               std::initializer_list<Route> scks,
+                               std::initializer_list<Route> misos,
+                               std::initializer_list<Route> mosis) {
+    for (const auto& [sck, sck_af] : scks) {
+      for (const auto& [miso, miso_af] : misos) {
+        for (const auto& [mosi, mosi_af] : mosis) {
+          gpio_inits.clear();
+          Spi spi(peripheral, sck, miso, mosi, 50'000'000);
+          assert(spi.Initialize() && last_spi_init.Instance == instance);
+          assert(spi.GetFrequencyHz() == 27'000'000);
+          assert(gpio_inits.size() == 3 &&
+                 gpio_inits[0].second.Alternate == sck_af &&
+                 gpio_inits[1].second.Alternate == miso_af &&
+                 gpio_inits[2].second.Alternate == mosi_af);
+        }
+      }
+    }
+  };
+  check_routes(SpiPeripheral::kSpi4, SPI4, {{kPE2, 5}, {kPE12, 5}},
+               {{kPE5, 5}, {kPE13, 5}}, {{kPE6, 5}, {kPE14, 5}});
+  check_routes(SpiPeripheral::kSpi5, SPI5, {{kPF7, 5}}, {{kPF8, 5}},
+               {{kPF9, 5}, {kPF11, 5}});
+  check_routes(SpiPeripheral::kSpi6, SPI6, {{kPA5, 8}, {kPB3, 8}, {kPG13, 5}},
+               {{kPA6, 8}, {kPB4, 8}, {kPG12, 5}},
+               {{kPA7, 8}, {kPB5, 8}, {kPG14, 5}});
 #endif
 }

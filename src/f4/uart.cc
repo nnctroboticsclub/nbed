@@ -9,9 +9,9 @@
 #include <optional>
 
 #include "f4/pin_mapper.h"
+#include "f4/pin_routes.h"
 #include "stm32f4xx_hal.h"  // IWYU pragma: keep
 #include "stm32f4xx_hal_gpio.h"
-#include "stm32f4xx_hal_gpio_ex.h"
 #include "stm32f4xx_hal_rcc.h"
 
 namespace nkrc::nbed::stm32::f4 {
@@ -19,96 +19,28 @@ namespace {
 struct UartHardware {
   USART_TypeDef* instance;
   IRQn_Type irq;
+  uint8_t number;
 };
 
 // Keep this order aligned with UartPeripheral, preserving existing enum values.
 const std::array kHardware{
-    UartHardware{USART2, USART2_IRQn},
-    UartHardware{USART3, USART3_IRQn},
-    UartHardware{UART4, UART4_IRQn},
-    UartHardware{USART1, USART1_IRQn},
-    UartHardware{UART5, UART5_IRQn},
-    UartHardware{USART6, USART6_IRQn},
+    UartHardware{USART2, USART2_IRQn, 2}, UartHardware{USART3, USART3_IRQn, 3},
+    UartHardware{UART4, UART4_IRQn, 4},   UartHardware{USART1, USART1_IRQn, 1},
+    UartHardware{UART5, UART5_IRQn, 5},   UartHardware{USART6, USART6_IRQn, 6},
 };
 std::array<Uart*, kHardware.size()> instances{};
 
-enum class UartSignal { kRx, kTx, kCts, kRts };
-
-struct UartPin {
-  UartPeripheral peripheral;
-  interface::PinName pin;
-  UartSignal signal;
-  uint32_t alternate;
-};
-
-// ST package pinout and GPIO alternate-function tables; see docs/uart.md.
-constexpr std::array kPins{
-    UartPin{UartPeripheral::kUart4, interface::PinName::kPA0,
-            UartSignal::kTx, GPIO_AF8_UART4},
-    UartPin{UartPeripheral::kUsart2, interface::PinName::kPA0,
-            UartSignal::kCts, GPIO_AF7_USART2},
-    UartPin{UartPeripheral::kUart4, interface::PinName::kPA1,
-            UartSignal::kRx, GPIO_AF8_UART4},
-    UartPin{UartPeripheral::kUsart2, interface::PinName::kPA1,
-            UartSignal::kRts, GPIO_AF7_USART2},
-    UartPin{UartPeripheral::kUsart1, interface::PinName::kPA10,
-            UartSignal::kRx, GPIO_AF7_USART1},
-    UartPin{UartPeripheral::kUsart1, interface::PinName::kPA11,
-            UartSignal::kCts, GPIO_AF7_USART1},
-    UartPin{UartPeripheral::kUsart1, interface::PinName::kPA12,
-            UartSignal::kRts, GPIO_AF7_USART1},
-    UartPin{UartPeripheral::kUart4, interface::PinName::kPA15,
-            UartSignal::kRts, GPIO_AF8_UART4},
-    UartPin{UartPeripheral::kUsart2, interface::PinName::kPA2,
-            UartSignal::kTx, GPIO_AF7_USART2},
-    UartPin{UartPeripheral::kUsart2, interface::PinName::kPA3,
-            UartSignal::kRx, GPIO_AF7_USART2},
-    UartPin{UartPeripheral::kUsart1, interface::PinName::kPA9,
-            UartSignal::kTx, GPIO_AF7_USART1},
-    UartPin{UartPeripheral::kUart4, interface::PinName::kPB0,
-            UartSignal::kCts, GPIO_AF8_UART4},
-    UartPin{UartPeripheral::kUsart3, interface::PinName::kPB10,
-            UartSignal::kTx, GPIO_AF7_USART3},
-    UartPin{UartPeripheral::kUsart3, interface::PinName::kPB13,
-            UartSignal::kCts, GPIO_AF7_USART3},
-    UartPin{UartPeripheral::kUsart3, interface::PinName::kPB14,
-            UartSignal::kRts, GPIO_AF7_USART3},
-    UartPin{UartPeripheral::kUsart1, interface::PinName::kPB6,
-            UartSignal::kTx, GPIO_AF7_USART1},
-    UartPin{UartPeripheral::kUsart1, interface::PinName::kPB7,
-            UartSignal::kRx, GPIO_AF7_USART1},
-    UartPin{UartPeripheral::kUart4, interface::PinName::kPC10,
-            UartSignal::kTx, GPIO_AF8_UART4},
-    UartPin{UartPeripheral::kUsart3, interface::PinName::kPC10,
-            UartSignal::kTx, GPIO_AF7_USART3},
-    UartPin{UartPeripheral::kUart4, interface::PinName::kPC11,
-            UartSignal::kRx, GPIO_AF8_UART4},
-    UartPin{UartPeripheral::kUsart3, interface::PinName::kPC11,
-            UartSignal::kRx, GPIO_AF7_USART3},
-    UartPin{UartPeripheral::kUart5, interface::PinName::kPC12,
-            UartSignal::kTx, GPIO_AF8_UART5},
-    UartPin{UartPeripheral::kUsart3, interface::PinName::kPC5,
-            UartSignal::kRx, GPIO_AF7_USART3},
-    UartPin{UartPeripheral::kUsart6, interface::PinName::kPC6,
-            UartSignal::kTx, GPIO_AF8_USART6},
-    UartPin{UartPeripheral::kUsart6, interface::PinName::kPC7,
-            UartSignal::kRx, GPIO_AF8_USART6},
-    UartPin{UartPeripheral::kUart5, interface::PinName::kPC8,
-            UartSignal::kRts, GPIO_AF7_UART5},
-    UartPin{UartPeripheral::kUart5, interface::PinName::kPC9,
-            UartSignal::kCts, GPIO_AF7_UART5},
-    UartPin{UartPeripheral::kUart5, interface::PinName::kPD2,
-            UartSignal::kRx, GPIO_AF8_UART5},
-};
-
 std::optional<uint32_t> AlternateFunction(UartPeripheral peripheral,
-                                         interface::PinName pin,
-                                         UartSignal signal) {
-  for (const auto& route : kPins) {
-    if (route.peripheral == peripheral && route.pin == pin &&
-        route.signal == signal) {
-      return route.alternate;
-    }
+                                          interface::PinName pin,
+                                          PinSignal signal) {
+  const auto index = static_cast<unsigned>(peripheral);
+  if (index >= kHardware.size()) {
+    return std::nullopt;
+  }
+  const uint8_t number = kHardware[index].number;
+  if (const auto* route =
+          detail::FindPinRoute(kUartPins, number, signal, pin)) {
+    return route->value;
   }
   return std::nullopt;
 }
@@ -179,8 +111,7 @@ bool Uart::Initialize() {
     return true;
   }
   Uart*& instance = InstanceFor(peripheral_);
-  if (!IsValidPinPair() || !IsValidConfig() ||
-      interrupt_priority_ > 15U ||
+  if (!IsValidPinPair() || !IsValidConfig() || interrupt_priority_ > 15U ||
       (instance != nullptr && instance != this)) {
     return false;
   }
@@ -188,25 +119,8 @@ bool Uart::Initialize() {
   EnableUartClock(peripheral_);
   handle_.Instance = kHardware[static_cast<unsigned>(peripheral_)].instance;
   handle_.Init = config_.hal;
-  GPIO_InitTypeDef gpio{};
-  gpio.Mode = GPIO_MODE_AF_PP;
-  gpio.Pull = config_.gpio_pull;
-  gpio.Speed = config_.gpio_speed;
-  const auto configure_pin = [&](interface::PinName pin, UartSignal signal) {
-    if (pin == interface::PinName::kNC) {
-      return true;
-    }
-    gpio.Alternate = *AlternateFunction(peripheral_, pin, signal);
-    return PinMapper::ConfigureGpio(pin, gpio);
-  };
-  if (!configure_pin(rx_, UartSignal::kRx) ||
-      !configure_pin(tx_, UartSignal::kTx) ||
-      !configure_pin(config_.cts, UartSignal::kCts) ||
-      !configure_pin(config_.rts, UartSignal::kRts)) {
-    instance = nullptr;
-    return false;
-  }
   if (HAL_UART_Init(&handle_) != HAL_OK) {
+    (void)HAL_UART_DeInit(&handle_);
     instance = nullptr;
     return false;
   }
@@ -214,6 +128,25 @@ bool Uart::Initialize() {
     __HAL_UART_ONE_BIT_SAMPLE_ENABLE(&handle_);
   } else {
     __HAL_UART_ONE_BIT_SAMPLE_DISABLE(&handle_);
+  }
+  GPIO_InitTypeDef gpio{};
+  gpio.Mode = GPIO_MODE_AF_PP;
+  gpio.Pull = config_.gpio_pull;
+  gpio.Speed = config_.gpio_speed;
+  const auto configure_pin = [&](interface::PinName pin, PinSignal signal) {
+    if (pin == interface::PinName::kNC) {
+      return true;
+    }
+    gpio.Alternate = *AlternateFunction(peripheral_, pin, signal);
+    return PinMapper::ConfigureGpio(pin, gpio);
+  };
+  if (!configure_pin(rx_, PinSignal::kRx) ||
+      !configure_pin(tx_, PinSignal::kTx) ||
+      !configure_pin(config_.cts, PinSignal::kCts) ||
+      !configure_pin(config_.rts, PinSignal::kRts)) {
+    (void)HAL_UART_DeInit(&handle_);
+    instance = nullptr;
+    return false;
   }
   HAL_NVIC_SetPriority(Irq(), interrupt_priority_, 0);
   HAL_NVIC_EnableIRQ(Irq());
@@ -223,7 +156,8 @@ bool Uart::Initialize() {
 
 bool Uart::Send(interface::UartTxMessage message) {
   return initialized_ && (config_.hal.Mode & UART_MODE_TX) != 0 &&
-         !detail::IsUartWordTransfer(config_.hal) && tx_dma_status_ != interface::DmaStatus::kBusy &&
+         !detail::IsUartWordTransfer(config_.hal) &&
+         tx_dma_status_ != interface::DmaStatus::kBusy &&
          message.size() <= std::numeric_limits<uint16_t>::max() &&
          HAL_UART_Transmit(
              &handle_,
@@ -250,8 +184,8 @@ bool Uart::EnableRxInterrupt() {
       rx_dma_status_ == interface::DmaStatus::kBusy) {
     return false;
   }
-  if (HAL_UART_Receive_IT(&handle_,
-                         reinterpret_cast<uint8_t*>(&rx_word_), 1) != HAL_OK) {
+  if (HAL_UART_Receive_IT(&handle_, reinterpret_cast<uint8_t*>(&rx_word_), 1) !=
+      HAL_OK) {
     return false;
   }
   rx_interrupt_enabled_ = true;
@@ -301,33 +235,34 @@ void Uart::OnRxComplete() {
       rx_word_callback_(interface::UartWordRxMessage{&rx_word_, 1});
     }
   } else if (rx_callback_) {
-    rx_callback_(interface::UartRxMessage{
-        reinterpret_cast<uint8_t*>(&rx_word_), 1});
+    rx_callback_(
+        interface::UartRxMessage{reinterpret_cast<uint8_t*>(&rx_word_), 1});
   }
   (void)EnableRxInterrupt();
 }
 
-#include "detail/uart_words_impl.h"
 #include "detail/uart_dma_impl.h"
+#include "detail/uart_words_impl.h"
 
 bool Uart::IsValidPinPair() const {
   using interface::PinName;
   bool swapped = false;
-  const bool needs_rx = (config_.hal.Mode &
-                          (swapped ? UART_MODE_TX : UART_MODE_RX)) != 0;
-  const bool needs_tx = (config_.hal.Mode &
-                          (swapped ? UART_MODE_RX : UART_MODE_TX)) != 0;
+  const bool needs_rx =
+      (config_.hal.Mode & (swapped ? UART_MODE_TX : UART_MODE_RX)) != 0;
+  const bool needs_tx =
+      (config_.hal.Mode & (swapped ? UART_MODE_RX : UART_MODE_TX)) != 0;
   const bool needs_cts = (config_.hal.HwFlowCtl & UART_HWCONTROL_CTS) != 0;
   const bool needs_rts = (config_.hal.HwFlowCtl & UART_HWCONTROL_RTS) != 0;
-  const auto valid = [&](PinName pin, UartSignal signal, bool required) {
-    return pin == PinName::kNC ? !required :
-        PinMapper::IsValidPin(pin) &&
-        AlternateFunction(peripheral_, pin, signal).has_value();
+  const auto valid = [&](PinName pin, PinSignal signal, bool required) {
+    return pin == PinName::kNC
+               ? !required
+               : PinMapper::IsValidPin(pin) &&
+                     AlternateFunction(peripheral_, pin, signal).has_value();
   };
-  if (!valid(rx_, UartSignal::kRx, needs_rx) ||
-      !valid(tx_, UartSignal::kTx, needs_tx) ||
-      !valid(config_.cts, UartSignal::kCts, needs_cts) ||
-      !valid(config_.rts, UartSignal::kRts, needs_rts) ||
+  if (!valid(rx_, PinSignal::kRx, needs_rx) ||
+      !valid(tx_, PinSignal::kTx, needs_tx) ||
+      !valid(config_.cts, PinSignal::kCts, needs_cts) ||
+      !valid(config_.rts, PinSignal::kRts, needs_rts) ||
       (!needs_cts && config_.cts != PinName::kNC) ||
       (!needs_rts && config_.rts != PinName::kNC)) {
     return false;
@@ -358,7 +293,7 @@ bool Uart::IsValidConfig() const {
 #if !defined(STM32F303x8)
        && config_.gpio_speed != GPIO_SPEED_FREQ_VERY_HIGH
 #endif
-      )) {
+       )) {
     return false;
   }
   return true;

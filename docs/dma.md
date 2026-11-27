@@ -124,6 +124,9 @@ SYSCFGのDMAリマップや、nbedが予約したDMAの設定を変更しない�
 | TIM1 update | DMA1 CH5 | DMA2 stream5 / channel6 |
 | TIM2 update | DMA1 CH2 | DMA1 stream1 / channel3 |
 | TIM3 update | DMA1 CH3 | DMA1 stream2 / channel5 |
+| TIM4 update | — | DMA1 stream6 / channel2 |
+| TIM5 update | — | DMA1 stream0 / channel6 |
+| TIM8 update | — | DMA2 stream1 / channel7 |
 | TIM15 update | DMA1 CH5 | 未対応 |
 | TIM16 update | DMA1 CH3 | 未対応 |
 | TIM17 update | DMA1 CH1 | 未対応 |
@@ -136,10 +139,12 @@ SYSCFGのDMAリマップや、nbedが予約したDMAの設定を変更しない�
 | UART7 TX / RX | 未対応 | F767ZIのみ DMA1 stream1 / stream3、channel5 |
 | UART8 TX / RX | 未対応 | F767ZIのみ DMA1 stream0 / stream6、channel5 |
 
-v0.11.0から、対応MCUの全UARTでDMAを使用できます。
+通常 PWM のうち、F446RE／F767ZI の TIM9～14 は DMA 更新要求を持ちません。
+対応するすべての UART で DMA を使用できます。
 F7のUART5受信とUART8送信のように、channel番号が異なっても同じstreamは同時に使用できません。
 
-例えばF4/F7のTIM2 PWM DMAとUSART3受信DMA、TIM3 PWM DMAとUART4受信DMAは競合します。
+F4/F7 の TIM2 と USART3 RX、TIM3 と UART4 RX、TIM4 と USART2 TX、TIM5 と UART5 RX、
+TIM8 と USART6 RX は、それぞれ同じ DMA ストリームを使用します。
 後から開始した側は `false` になり、先に使用している転送を維持します。
 予約はnbed内のDMA利用間で管理します。外部HALコードの所有権は検出できません。
 自動的な代替ストリーム選択は行いません。

@@ -9,6 +9,7 @@
 #define HAL_ADC_MODULE_ENABLED
 #define HAL_CAN_MODULE_ENABLED
 #define HAL_I2C_MODULE_ENABLED
+#define HAL_FMPI2C_MODULE_ENABLED
 #define HAL_SPI_MODULE_ENABLED
 #define HAL_TIM_MODULE_ENABLED
 #define HAL_UART_MODULE_ENABLED
@@ -92,6 +93,9 @@
 #endif
 #ifdef HAL_I2C_MODULE_ENABLED
 #include "stm32f4xx_hal_i2c.h"
+#endif
+#ifdef HAL_FMPI2C_MODULE_ENABLED
+#include "stm32f4xx_hal_fmpi2c.h"
 #endif
 #ifdef HAL_PWR_MODULE_ENABLED
 #include "stm32f4xx_hal_pwr.h"

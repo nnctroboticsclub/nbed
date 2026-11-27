@@ -1,19 +1,14 @@
 # nbed
 
-nbed は、**STM32シリーズ** で GPIO、EXTI、ADC、PWM、I²C、SPI、UART、CAN、
-エンコーダを扱うための C++ ライブラリです。STM32 HAL の初期化手順を隠しつつ、使用する
-タイマ・通信機能・ピンをコードに明示して、間違った組み合わせは `Initialize()` の失敗として
-検出します。
+nbed は、STM32 NUCLEO で GPIO、外部割り込み（EXTI）、ADC、PWM、I²C、SPI、UART、CAN、
+エンコーダーを扱う C++ ライブラリです。周辺機能とピンを指定し、`Initialize()` の戻り値で初期化の結果を確認できます。
 
-対応ボードは **NUCLEO-F446RE / NUCLEO-F303K8 / NUCLEO-F767ZI** です。このページの基本例と対応ピン表は
-F446RE 向けです。F303K8 の設定・ピン表・実機確認手順は
-[F303K8 ガイド](docs/f303k8.md)を参照してください。
-F767ZI の設定・対応ピン・キャッシュとメモリ配置は [F767ZI ガイド](docs/f767zi.md)にあります。
-v0.12.0 はプレリリースです。変更内容と検証範囲は
-[v0.12.0 リリースノート](docs/releases/v0.12.0.md)にあります。
+対応するボードは **NUCLEO-F303K8 / NUCLEO-F446RE / NUCLEO-F767ZI** です。README の基本例は F446RE 向けです。
+各 MCU に実装されたピンと代替機能は [対応ピン一覧](docs/pinout.md)、ボードの配線と設定は
+[F303K8 ガイド](docs/f303k8.md)と [F767ZI ガイド](docs/f767zi.md)を参照してください。
 
-初心者はまず `#include "nbed.h"` と `System::Initialize()` だけ覚えれば大丈夫です。  
-こちらの [サンプル](#最初に動かす) にチュートリアルとしてLチカの例があります。
+最初は [LED を点滅させる例](#最初に動かす)を試せます。
+v1.0.0 の変更点と検証範囲は [リリースノート](docs/releases/v1.0.0.md)にあります。
 
 ## 目次
 
@@ -47,15 +42,9 @@ v0.12.0 はプレリリースです。変更内容と検証範囲は
     - [単位付きの値](#単位付きの値)
   - [対応ピン一覧](#対応ピン一覧)
     - [基板上でまず使える信号](#基板上でまず使える信号)
-    - [GPIO](#gpio)
-    - [ADC1](#adc1)
-    - [PWM](#pwm)
-    - [I²C](#ic)
-    - [SPI](#spi)
-    - [UART](#uart)
-    - [CAN](#can-1)
-    - [エンコーダ](#エンコーダ-1)
-  - [上級者向け: マクロとビルドの仕組み](#上級者向け-マクロとビルドの仕組み)
+  - [日本語 API リファレンス](docs/api.md)
+
+  - [上級者向けのマクロとビルドの仕組み](#上級者向けのマクロとビルドの仕組み)
     - [マクロ](#マクロ)
     - [PlatformIO に残す設定](#platformio-に残す設定)
     - [クロックを変更する](#クロックを変更する)
@@ -94,7 +83,7 @@ NUCLEO-F446RE に書き込む場合は `pio run -e f4-blink -t upload` を実行
 - ST-LINK 用 USB ケーブル
 - PlatformIO が使える環境（VS Code + PlatformIO IDE など）
 
-最初はNucleo基板上の LED（`PA5`）を点滅させるだけの、次のプログラムがおすすめです。
+最初は NUCLEO 基板上の LED（`PA5`）を点滅させるだけの、次のプログラムがおすすめです。
 
 ```cpp
 #include "nbed.h"
@@ -104,24 +93,26 @@ int main() {
 
   DigitalOut led(kPA5); // LEDを定義
 
-  led.Initialize();     // LEDを初期化
+  if (!led.Initialize()) {
+    System::ErrorHandler();
+  }
 
   while (true) {
     led = true;       // 点灯 (led.Write(true) とも書ける)
     SleepFor(500ms);  // 500ms 待つ
-  
+
     led = false;      // 消灯 (led.Write(false) とも書ける)
     SleepFor(500ms);  // 500ms 待つ
   }
 }
 ```
 
-`System::Initialize()` は、HAL、クロック、時間計測を初期化します。DMAは転送の使用時に初期化します。`main()` の先頭で
+`System::Initialize()` は、HAL、クロック、時間計測と既定のコンソールを初期化します。DMA は転送の使用時に初期化します。`main()` の先頭で
 **一度だけ**呼び出してください。`SleepFor()` の `ms` と `s` は、それぞれミリ秒・秒を表します。
 
-`Initialize()` は、初期化に失敗した場合に `false` を返します。  
+各周辺機能の `Initialize()` は、初期化に失敗した場合に `false` を返します。
 `false` なら、選んだピンや周辺機能の組み合わせが使えない、同じ資源を
-すでに使っている、または設定値が不正です。最初のうちは戻り値を必ず確認しましょう。
+すでに使っている、または設定値が不正です。戻り値を確認してから読み書きしましょう。
 
 ```cpp
 DigitalOut output(kPA5);
@@ -136,7 +127,7 @@ if (!output.Initialize()) {
 
 `kPA5` は「GPIOA の 5 番ピン」、`kPB8` は「GPIOB の 8 番ピン」です。STM32 のポート名に加え、
 NUCLEO-F446RE の Arduino 互換コネクタ名も `kD1` や `kA3` のように指定できます。どちらも同じ
-ピンを表す別名なので、すべての機能で混在なく使用できます。基板上の信号名と対応表は
+ピンを表す別名なので、STM32 の物理ピン名と同じように使えます。基板上の信号名と対応表は
 [対応ピン一覧](#対応ピン一覧)を確認してください。
 
 ### 初期化の順番
@@ -146,8 +137,8 @@ NUCLEO-F446RE の Arduino 互換コネクタ名も `kD1` や `kA3` のように�
 3. `Initialize()` が成功したことを確認する。
 4. 読み書きや通信を始める。
 
-同じオブジェクトに対して `Initialize()` を複数回呼んでも問題ありません。いっぽうで、同じ
-UART・I²C・CAN 周辺機能を二つのオブジェクトで同時に初期化することはできません。
+同じオブジェクトに対して `Initialize()` を複数回呼んでも問題ありません。
+SPI・UART・I²C・CAN では、1 つのコントローラーを 1 つのオブジェクトで管理します。
 
 ### `printf` の出力先
 
@@ -166,7 +157,9 @@ NUCLEO-F446RE のユーザー LED LD2 は `PA5` です。`true` は High、`fals
 ```cpp
 DigitalOut led(kPA5);
 
-led.Initialize();
+if (!led.Initialize()) {
+  System::ErrorHandler();
+}
 
 led.Write(true);   // 点灯
 led.Write(false);  // 消灯
@@ -185,7 +178,9 @@ High になる接続か Low になる接続かを回路図で確認してくだ�
 ```cpp
 DigitalIn button(kPC13, GpioPull::kNone);
 
-button.Initialize();
+if (!button.Initialize()) {
+  System::ErrorHandler();
+}
 
 if (button.Read()) {
   // High のときに実行する処理
@@ -229,13 +224,15 @@ F446RE の5入力には PA0 / PA1 / PA4 / PA8 / PA9 を使えます。
 
 ## アナログ入力（ADC）
 
-`AnalogIn` は ADC1 の 12 bit 変換を使います。`ReadRatio()` は `0.0` から `1.0` の比率、
+`AnalogIn` は、ピンに応じた ADC で 12 ビットの単発変換を行います。`ReadRatio()` は `0.0` から `1.0` の比率、
 `ReadVoltage()` は指定した基準電圧から求めた電圧を返します。
 
 ```cpp
 AnalogIn battery(kPA0);  // 基準電圧は既定で 3.3 V
 
-battery.Initialize();
+if (!battery.Initialize()) {
+  System::ErrorHandler();
+}
 
 const float ratio = battery.ReadRatio();      // 例: 0.50
 const float voltage = battery.ReadVoltage();  // 例: 約 1.65 V
@@ -247,6 +244,10 @@ const float voltage = battery.ReadVoltage();  // 例: 約 1.65 V
 AnalogIn sensor(kPA1, 3.0F);
 ```
 
+ピンだけを渡すと対応する ADC を選び、共通ピンでは ADC1 を使います。F446RE では
+`AnalogIn input(kAdc2, kPA0);` のように ADC を指定することもできます。
+ピンとチャンネルは [ADC の対応表](docs/pinout.md#f446re-adc)を参照してください。
+
 ADC 端子に入力できるのは **0 V から基準電圧まで**です。測りたい電圧が 3.3 V を超える場合は、
 必ず抵抗分圧回路を用意してください。ADC は読み出すたびに一回変換するため、高速連続サンプリング
 や ADC の DMA はこのライブラリの対象外です。
@@ -256,16 +257,16 @@ ADC 端子に入力できるのは **0 V から基準電圧まで**です。測�
 `Pwm` はタイマの一つのチャンネルを PWM 出力にします。サーボなら 50 Hz で初期化し、パルス幅を
 指定する方法が分かりやすいです。
 
-F303K8 は TIM1/2/3 に加え、v0.7.0 から TIM15（2チャンネル）と TIM16/17（各1チャンネル）に
-対応しています。ピンとコンソールとの競合条件は [F303K8 の PWM ガイド](docs/f303k8.md#pwm)を参照してください。
-
-v0.8.0 から `kCh1N` などの相補出力、通常/N出力のペア、HAL の極性・アイドル状態・
-デッドタイム設定にも対応しています。使い方と対応ピンは [PWM 出力設定ガイド](docs/pwm.md)にあります。
+F303K8 は TIM1～3、TIM15～17、F446RE と F767ZI は TIM1～5、TIM8～14 を選べます。
+高機能タイマでは `kCh1N` などの相補出力、通常出力とのペア、極性やデッドタイムを設定できます。
+タイマごとのピンは [対応ピン一覧](docs/pinout.md)、相補出力の使い方は [PWM ガイド](docs/pwm.md)にあります。
 
 ```cpp
 Pwm servo(kTim3, kCh1, kPB4, 50);  // TIM3 CH1 / PB4 / 50 Hz
 
-servo.Initialize();
+if (!servo.Initialize()) {
+  System::ErrorHandler();
+}
 
 servo.SetPulseWidthUs(1'000);  // 1.0 ms
 SleepFor(1s);
@@ -285,7 +286,7 @@ pwm.SetFrequencyHz(20'000);
 ### PWM で特に重要な制約
 
 - コンストラクタの「タイマ・チャンネル・ピン」は、[対応ピン一覧](#対応ピン一覧)の組み合わせを
-  そのまま使います。たとえば `kTim3, kCh1, kPB4` は使えますが、`kTim3, kCh1, kPA5` は使えません。
+  選びます。たとえば `kTim3, kCh1, kPB4` は使えますが、`kTim3, kCh1, kPA5` は使えません。
 - 同じタイマの複数チャンネルは使えますが、**周波数を共有**します。最初のチャンネルと異なる
   周波数で初期化すると `false` になります。
 - 同じタイマで PWM とエンコーダを併用することはできません。競合した `Initialize()` は `false` を
@@ -316,9 +317,11 @@ NUCLEO と接続します。
 
 I2c i2c(kI2c1, kPB6, kPB7, 400'000);
 
-i2c.Initialize();
+if (!i2c.Initialize()) {
+  System::ErrorHandler();
+}
 
-std::array<uint8_t, 2> command{0x75, 0x00};
+std::array<uint8_t, 1> command{0x75};  // 読み出すレジスター番号
 I2CMessage write_message{
     .address = 0x68,
     .size = static_cast<uint8_t>(command.size()),
@@ -339,9 +342,14 @@ if (!i2c.Receive(read_message)) {
 }
 ```
 
-対応速度は 400 kHz 以下です。長い配線や複数のデバイスをつなぐ場合は、モジュール側の
+対応速度は 400 kHz 以下です。F446RE の FMPI2C1 は `I2c(kFmpi2c1, kPC6, kPC7)`、
+F767ZI の I2C4 は `I2c(kI2c4, kPD12, kPD13)` のように指定します。
+SCL と SDA は同じコントローラーの候補から個別に選べます。[対応ピン一覧](docs/pinout.md)
+
+長い配線や複数のデバイスをつなぐ場合は、モジュール側の
 抵抗だけに頼らず、適切なプルアップ抵抗を SCL/SDA に入れてください。`Send()` と `Receive()` は
-完了まで待つ（ブロッキングする）関数です。
+完了まで待つ（ブロッキングする）関数です。上の例ではレジスター番号を送ってから別の転送で読み取ります。
+送信から受信までの間にリピートスタートが必須の機器では、機器の仕様に合う HAL の転送関数を使います。
 
 ## SPI（センサ・周辺機器）
 
@@ -401,7 +409,9 @@ printf("Hello, nbed!\\n");
 
 Uart device(kUsart3, kPC11, kPB10, 115'200);
 
-device.Initialize();
+if (!device.Initialize()) {
+  System::ErrorHandler();
+}
 
 const std::array<uint8_t, 3> message{'O', 'K', '\\n'};
 device.Send(message);
@@ -443,9 +453,9 @@ nbed の CAN は Classic CAN（最大 8 byte/frame）です。NUCLEO のピン�
 ```cpp
 Can can(kCan1, kPB8, kPB9);  // CANを定義
 
-can.Initialize();  // CANを初期化
-
-can.Start();  // CANの送受信を開始
+if (!can.Start()) {  // 必要に応じて初期化し、送受信を開始
+  System::ErrorHandler();
+}
 
 // 送信するメッセージを作成 (ID: 0x123, データ長: 3, データ: {0x4E, 0x42, 0x45})
 CanMessage message{
@@ -454,21 +464,24 @@ CanMessage message{
     .data = {0x4E, 0x42, 0x45},
 };
 
-can.Send(message);  // 送信
+if (!can.Send(message)) {  // 送信要求を登録
+  System::ErrorHandler();
+}
 ```
 
-既定では標準 ID・拡張 ID とも受信します。標準 ID `0x123` だけを通すには、受信開始前または後に
-フィルタを設定できます。
+既定では標準 ID・拡張 ID とも受信します。標準 ID `0x123` だけを通すには、初期化後に受信フィルターを設定します。
 
 ```cpp
-can.SetRxFilter(0x123, 0x7ff);
+if (!can.SetRxFilter(0x123, 0x7ff)) {
+  System::ErrorHandler();
+}
 ```
 
 受信を取りこぼしにくくするには、ポーリングの `Receive()` より受信割り込みを推奨します。
 UART と同様、コールバックは割り込み文脈で短く終える必要があります。
 
 ```cpp
-// 受信したか同課のフラグ (割り込みで書き換えられるので volatile)
+// 受信通知のフラグ (割り込みで書き換えられるので volatile)
 volatile bool has_message = false;
 
 // 受信割り込みのコールバックを設定
@@ -476,11 +489,12 @@ can.SetRxCallback([](const CanMessage&) {
   has_message = true;
 });
 
-can.EnableRxInterrupt();  // 受信割り込みを有効化
+if (!can.EnableRxInterrupt()) {
+  System::ErrorHandler();
+}
 ```
 
-`CanConfig` を使うと、ループバックや割り込み優先度も指定できます。外部配線なしの動作確認には
-`kLoopback` が便利です。
+`CanConfig` を使うと、ループバックや割り込み優先度も指定できます。外部配線なしの動作確認には `kSilentLoopback` を使えます。
 
 ```cpp
 Can test_can({
@@ -488,9 +502,13 @@ Can test_can({
     .rx = kPB8,
     .tx = kPB9,
     .bitrate = 1'000'000,
-    .mode = kLoopback,
+    .mode = kSilentLoopback,
 });
 ```
+
+CAN1 と CAN2 の RX・TX は各コントローラーの候補から独立して選べます。
+たとえば F446RE と F767ZI では `Can can(kCan1, kPA11, kPB9);` が使えます。
+F767ZI の CAN3 は独立したフィルターバンクを持ちます。[対応ピン一覧](docs/pinout.md)
 
 ## エンコーダ
 
@@ -501,7 +519,9 @@ Can test_can({
 ```cpp
 Encoder encoder(EncoderTimer::kTim3, kPB4, kPB5, 2048);
 
-encoder.Initialize();
+if (!encoder.Initialize()) {
+  System::ErrorHandler();
+}
 
 const int count = encoder.GetCount();
 const float angle_deg = encoder.GetAngle().GetAsDegree();
@@ -509,9 +529,10 @@ const float angle_deg = encoder.GetAngle().GetAsDegree();
 encoder.ResetCount();
 ```
 
-タイマ 1/2/3 を使うため、同じタイマを PWM とエンコーダに同時使用することはできません。
-`TIM1` と `TIM3` は 16 bit、`TIM2` は 32 bit のカウンタです。非常に長く回転させる場合は、
-カウンタの周回を考慮して定期的に `GetCount()` を読み取ってください。
+F303K8 は TIM1～3、F446RE と F767ZI は TIM1～5 と TIM8 を選べます。各タイマの CH1 が A 相、
+CH2 が B 相です。エンコーダーが使うタイマは PWM と共用できません。
+TIM2 と TIM5 は 32 ビット、ほかは 16 ビットで周回します。連続回転量を追跡する場合は、
+十分短い間隔で `GetCount()` を読み、周回を考慮して前回との差分を積算してください。
 
 ## 時間待ち・計時・単位
 
@@ -552,8 +573,8 @@ const float radians = target.GetAsRadian();
 
 ## 対応ピン一覧
 
-以下は NUCLEO-F446RE / STM32F446RE で nbed が受け付ける組み合わせです。表にない
-組み合わせを指定すると、初期化は失敗します。
+[ボード別の周辺機能と対応ピン](docs/pinout.md)に、SPI、I²C、UART、CAN、PWM、
+エンコーダー、ADC のピンと AF／チャンネルをまとめています。以下は NUCLEO-F446RE の基板上の信号です。
 
 ### 基板上でまず使える信号
 
@@ -588,84 +609,12 @@ Arduino 互換コネクタの表記を使うこともできます。例えばNuc
 基板のコネクタ上の詳しい場所は、ST の
 [NUCLEO-64 ユーザーマニュアル](https://www.st.com/resource/en/user_manual/dm00105823.pdf)も参照してください。
 
-### GPIO
+## 日本語 API リファレンス
 
-デジタル入出力には `PA0–PA15`、`PB0–PB10`、`PB12–PB15`、`PC0–PC15`、`PD2`、`PH0–PH1` を
-使えます。`kNC` は未接続を表す予約値で、初期化には使えません。
+各クラス、関数および設定項目の説明は、ヘッダーの Doxygen コメントとエディターのホバーで読めます。
+HTML を生成する手順は [API リファレンスの生成](docs/api.md)にあります。
 
-### ADC1
-
-| ADC1 の入力 | 対応ピン |
-| --- | --- |
-| CH0–CH7 | `PA0–PA7` |
-| CH8–CH9 | `PB0–PB1` |
-| CH10–CH15 | `PC0–PC5` |
-
-### PWM
-
-| タイマ | チャンネル | 対応ピン |
-| --- | --- | --- |
-| TIM1 | CH1 / CH2 / CH3 / CH4 | `PA8` / `PA9` / `PA10` / `PA11` |
-| TIM2 | CH1 | `PA0`, `PA5`, `PA15`, `PB8` |
-| TIM2 | CH2 | `PA1`, `PB3`, `PB9` |
-| TIM2 | CH3 | `PA2`, `PB10` |
-| TIM2 | CH4 | `PA3`, `PB2` |
-| TIM3 | CH1 | `PA6`, `PB4`, `PC6` |
-| TIM3 | CH2 | `PA7`, `PB5`, `PC7` |
-| TIM3 | CH3 | `PB0`, `PC8` |
-| TIM3 | CH4 | `PB1`, `PC9` |
-
-### I²C
-
-| 周辺機能 | SCL / SDA の組み合わせ |
-| --- | --- |
-| I2C1 | `PB6` / `PB7`、`PB8` / `PB9` |
-| I2C2 | `PB10` / `PB3`、`PB10` / `PC12` |
-| I2C3 | `PA8` / `PB4`、`PA8` / `PC9` |
-
-### SPI
-
-| 周辺機能 | SCK | MISO | MOSI |
-| --- | --- | --- | --- |
-| SPI1 | `PA5`, `PB3` | `PA6`, `PB4` | `PA7`, `PB5` |
-| SPI2 | `PA9`, `PB10`, `PB13`, `PC7` | `PB14`, `PC2` | `PB15`, `PC1`, `PC3` |
-| SPI3 | `PB3`, `PC10` | `PB4`, `PC11` | `PB0`, `PB2`, `PB5`, `PC1`, `PC12` |
-
-各列のピンは組み合わせて使えます。CS は別の GPIO で制御します。
-PA5 は基板上 LED と共用なので、SPI1 の SCK として使う場合は LED 出力を初期化しません。
-
-### UART
-
-| 周辺機能 | RX | TX |
-| --- | --- | --- |
-| USART1 | `PA10` または `PB7` | `PA9` または `PB6` |
-| USART2 | `PA3` | `PA2` |
-| USART3 | `PC5` または `PC11` | `PB10` または `PC10` |
-| UART4 | `PA1` または `PC11` | `PA0` または `PC10` |
-| UART5 | `PD2` | `PC12` |
-| USART6 | `PC7` | `PC6` |
-
-各行のRX/TX候補を個別に選べます。USART6は `Uart serial(kUsart6, kPC7, kPC6, 115200);` で指定します。
-
-### CAN
-
-| 周辺機能 | RX | TX |
-| --- | --- | --- |
-| CAN1 | `PA11` または `PB8` | `PA12` または `PB9` |
-| CAN2 | `PB5` または `PB12` | `PB6` または `PB13` |
-
-同じCANのRX候補とTX候補は個別に選べます。たとえば
-`Can can(kCan1, kPA11, kPB9);` も使用できます。
-
-### エンコーダ
-
-| タイマ | A 相（CH1） | B 相（CH2） |
-| --- | --- | --- |
-| TIM1 | `PA8` | `PA9` |
-| TIM2 | `PA0`, `PA5`, `PA15`, `PB8` | `PA1`, `PB3`, `PB9` |
-| TIM3 | `PA6`, `PB4`, `PC6` | `PA7`, `PB5`, `PC7` |
-
-## 上級者向け: マクロとビルドの仕組み
+## 上級者向けのマクロとビルドの仕組み
 
 ### マクロ
 
@@ -732,7 +681,7 @@ platform_packages =
   toolchain-gccarmnoneeabi@1.140201.0
   framework-stm32cubef4@1.28.3
 board_build.stm32cube.custom_config_header = yes
-lib_deps = https://github.com/nnctroboticsclub/nbed.git
+lib_deps = https://github.com/nnctroboticsclub/nbed.git#v1.0.0
 ```
 
 `custom_config_header = yes` は、nbed に同梱した `stm32f4xx_hal_conf.h` を STM32Cube HAL が使う
@@ -773,8 +722,7 @@ PWM と CAN の実際の周波数はクロック設定に依存します。ク�
 - I²C と UART の通常送受信は完了まで無期限に待つ場合があります。割り込み内では呼び出さないでください。
 - PWM DMA と UART DMA のバッファは完了・中断まで保持してください。循環転送・UARTの可変長受信・
   相補PWMのDMAは未対応です。[DMA ガイド](docs/dma.md)に割当て・メモリ・制約をまとめています。
-- I²C、SPI、UART の通常送受信、CAN の `Receive()` はブロッキングです。周期処理を止めたくない場合は
-  タイムアウト設計や受信割り込みを検討してください。
+- I²C、SPI、UART の通常転送はブロッキングです。CAN の `Receive()` は FIFO0 にデータがなければ、待たずに `false` を返します。
 - UART/CAN の受信コールバックは割り込み処理です。共有データをメインループで読む場合は、必要に
   応じて `volatile`、排他、コピーの一貫性を考慮してください。
 
@@ -845,3 +793,5 @@ PWM と CAN の実際の周波数はクロック設定に依存します。ク�
 - v0.12.0 (2026-11-01) : UARTのHAL基本・拡張初期化設定を公開。
   反転、MSB first、ピン入替、RTS/CTS、通信フォーマット、9ビット用転送・DMA・受信割り込みに対応しました。
   詳細は [v0.12.0 リリースノート](docs/releases/v0.12.0.md)を参照してください。
+- v1.0.0（2026-11-28）で初の正規リリース。3 機種のペリフェラルとピンの対応を見直し、
+  日本語の API リファレンスと回帰テストを整備しました。[v1.0.0 リリースノート](docs/releases/v1.0.0.md)

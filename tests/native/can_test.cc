@@ -109,12 +109,19 @@ int main() {
   }
 
   // Reject reversed roles, unrelated pins, NC, duplicates and other CAN units.
-  constexpr auto candidates = std::array{
-      kPA11, kPA12, kPB5, kPB6, kNC, kPA0,
-      static_cast<PinName>(0x18), static_cast<PinName>(0x19),
-      static_cast<PinName>(0x30), static_cast<PinName>(0x31),
-      static_cast<PinName>(0x1c), static_cast<PinName>(0x1d),
-      static_cast<PinName>(0xfe)};
+  constexpr auto candidates = std::array{kPA11,
+                                         kPA12,
+                                         kPB5,
+                                         kPB6,
+                                         kNC,
+                                         kPA0,
+                                         static_cast<PinName>(0x18),
+                                         static_cast<PinName>(0x19),
+                                         static_cast<PinName>(0x30),
+                                         static_cast<PinName>(0x31),
+                                         static_cast<PinName>(0x1c),
+                                         static_cast<PinName>(0x1d),
+                                         static_cast<PinName>(0xfe)};
   for (auto rx : candidates) {
     for (auto tx : candidates) {
       const bool valid_rx =
@@ -129,8 +136,8 @@ int main() {
       }
 #ifndef STM32F303x8
       Can can2(CanPeripheral::kCan2, rx, tx);
-      const bool valid_can2 = (rx == kPB5 || rx == kPB12) &&
-                              (tx == kPB6 || tx == kPB13);
+      const bool valid_can2 =
+          (rx == kPB5 || rx == kPB12) && (tx == kPB6 || tx == kPB13);
       assert(can2.Initialize() == valid_can2);
       if (valid_can2) {
         gpio_deinits.clear();
@@ -142,9 +149,19 @@ int main() {
   }
   Can invalid_unit(static_cast<CanPeripheral>(0xff), kPA11, kPA12);
   assert(!invalid_unit.Initialize());
-  Can invalid_priority(CanConfig{.rx = kPA11, .tx = kPA12,
-                                 .interrupt_priority = 16});
+  Can invalid_priority(
+      CanConfig{.rx = kPA11, .tx = kPA12, .interrupt_priority = 16});
   assert(!invalid_priority.Initialize());
+  {
+    Can can(CanPeripheral::kCan1, kPA11, kPA12);
+    assert(can.Start() && CAN1->active_filters == 1);
+    assert(can.SetRxFilter(CanFilter{.id = 0x123, .mask = 0x7ff, .bank = 4}));
+    assert(CAN1->active_filters == (1U << 4));
+    assert(can.SetRxFilter(CanFilter{.id = 0x456, .mask = 0x7ff, .bank = 5}));
+    assert(CAN1->active_filters == ((1U << 4) | (1U << 5)));
+    can.Stop();
+    assert(CAN1->active_filters == 0);
+  }
 #ifndef STM32F303x8
   // Stopping CAN1 with mixed ports must preserve a running CAN2's clock.
   Can first(CanPeripheral::kCan1, kPA11, kPB9);
@@ -153,6 +170,34 @@ int main() {
   first.Stop();
   assert(can1_clock && can2_clock && irq_enabled[CAN2_RX0_IRQn]);
   second.Stop();
-  assert(!can2_clock && !irq_enabled[CAN2_RX0_IRQn]);
+  assert(!can1_clock && !can2_clock && !irq_enabled[CAN2_RX0_IRQn]);
+#endif
+#ifdef STM32F767xx
+  for (const auto rx : {kPA8, kPB3}) {
+    for (const auto tx : {kPA15, kPB4}) {
+      Can third(CanPeripheral::kCan3, rx, tx);
+      gpio_inits.clear();
+      gpio_deinits.clear();
+      assert(third.Start() && third.GetHandle().Instance == CAN3);
+      assert(can3_clock && !can1_clock && irq_enabled[CAN3_RX0_IRQn]);
+      Can duplicate(CanPeripheral::kCan3, kPA8, kPB4);
+      assert(!duplicate.Initialize());
+      assert(gpio_inits.size() == 2 && gpio_inits[0].second.Alternate == 11 &&
+             gpio_inits[1].second.Alternate == 11);
+      assert(first.Start() && second.Start());
+      assert(CAN1->active_filters == (1U | (1U << 14)));
+      assert(CAN3->active_filters == 1);
+      assert(!third.SetRxFilter(CanFilter{.bank = 14}));
+      assert(third.SetRxFilter(CanFilter{.bank = 13}));
+      assert(CAN3->active_filters == (1U << 13));
+      third.Stop();
+      CheckDeinit(rx, tx);
+      assert(!can3_clock && !irq_enabled[CAN3_RX0_IRQn]);
+      assert(CAN3->active_filters == 0 &&
+             CAN1->active_filters == (1U | (1U << 14)));
+      second.Stop();
+      first.Stop();
+    }
+  }
 #endif
 }

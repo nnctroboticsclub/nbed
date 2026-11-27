@@ -1,3 +1,5 @@
+/// @file
+/// @brief 対応ボードに合った nbed の公開型と関数を読み込む。
 #pragma once
 
 // C++ 標準ライブラリ
@@ -33,9 +35,9 @@ using nkrc::nbed::interface::SpiMode;
 using nkrc::nbed::interface::UartRxCallback;
 using nkrc::nbed::interface::UartRxMessage;
 using nkrc::nbed::interface::UartTxMessage;
-using nkrc::nbed::interface::UartWordTxMessage;
-using nkrc::nbed::interface::UartWordRxMessage;
 using nkrc::nbed::interface::UartWordRxCallback;
+using nkrc::nbed::interface::UartWordRxMessage;
+using nkrc::nbed::interface::UartWordTxMessage;
 using enum nkrc::nbed::interface::CanFormat;
 using enum nkrc::nbed::interface::CanFrameType;
 using enum nkrc::nbed::interface::PinName;
@@ -62,9 +64,9 @@ using namespace std::chrono_literals;
 // 初心者向けグローバル名前空間
 #ifndef NBED_NO_GLOBAL_NAMES
 using namespace nkrc::nbed::stm32::f4;
+using enum nkrc::nbed::stm32::f4::AdcPeripheral;
 using enum nkrc::nbed::stm32::f4::CanPeripheral;
 using enum nkrc::nbed::stm32::f4::CanMode;
-// using enum nkrc::nbed::stm32::f4::EncoderTimer;
 using enum nkrc::nbed::stm32::f4::GpioPull;
 using enum nkrc::nbed::stm32::f4::I2cPeripheral;
 using enum nkrc::nbed::stm32::f4::PwmTimer;
@@ -74,15 +76,24 @@ using enum nkrc::nbed::stm32::f4::UartPeripheral;
 #endif  // NBED_NO_GLOBAL_NAMES
 
 #ifndef NBED_NO_GLOBAL_FUNCTIONS
+/// @brief 秒数を指定して待機する。
+/// @param sec 待機時間。例として 2s は 2 秒。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(std::chrono::seconds sec) {
   nkrc::nbed::stm32::f4::ClockManager::GetClock().Sleep(
       std::chrono::duration_cast<std::chrono::milliseconds>(sec));
 }
 
+/// @brief ミリ秒単位の時間を指定して待機する。
+/// @param ms 待機時間。例として 500ms は 0.5 秒。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(std::chrono::milliseconds ms) {
   nkrc::nbed::stm32::f4::ClockManager::GetClock().Sleep(ms);
 }
 
+/// @brief 整数のミリ秒数を指定して待機する。
+/// @param ms 待機するミリ秒数。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(uint32_t ms) {
   nkrc::nbed::stm32::f4::ClockManager::GetClock().Sleep(ms);
 }
@@ -108,9 +119,9 @@ inline void SleepFor(uint32_t ms) {
 // 初心者向けグローバル名前空間
 #ifndef NBED_NO_GLOBAL_NAMES
 using namespace nkrc::nbed::stm32::f3;
+using enum nkrc::nbed::stm32::f3::AdcPeripheral;
 using enum nkrc::nbed::stm32::f3::CanPeripheral;
 using enum nkrc::nbed::stm32::f3::CanMode;
-// using enum nkrc::nbed::stm32::f3::EncoderTimer;
 using enum nkrc::nbed::stm32::f3::GpioPull;
 using enum nkrc::nbed::stm32::f3::I2cPeripheral;
 using enum nkrc::nbed::stm32::f3::PwmTimer;
@@ -120,15 +131,24 @@ using enum nkrc::nbed::stm32::f3::UartPeripheral;
 #endif  // NBED_NO_GLOBAL_NAMES
 
 #ifndef NBED_NO_GLOBAL_FUNCTIONS
+/// @brief 秒数を指定して待機する。
+/// @param sec 待機時間。例として 2s は 2 秒。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(std::chrono::seconds sec) {
   nkrc::nbed::stm32::f3::ClockManager::GetClock().Sleep(
       std::chrono::duration_cast<std::chrono::milliseconds>(sec));
 }
 
+/// @brief ミリ秒単位の時間を指定して待機する。
+/// @param ms 待機時間。例として 500ms は 0.5 秒。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(std::chrono::milliseconds ms) {
   nkrc::nbed::stm32::f3::ClockManager::GetClock().Sleep(ms);
 }
 
+/// @brief 整数のミリ秒数を指定して待機する。
+/// @param ms 待機するミリ秒数。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(uint32_t ms) {
   nkrc::nbed::stm32::f3::ClockManager::GetClock().Sleep(ms);
 }
@@ -154,9 +174,9 @@ inline void SleepFor(uint32_t ms) {
 // 初心者向けグローバル名前空間
 #ifndef NBED_NO_GLOBAL_NAMES
 using namespace nkrc::nbed::stm32::f7;
+using enum nkrc::nbed::stm32::f7::AdcPeripheral;
 using enum nkrc::nbed::stm32::f7::CanPeripheral;
 using enum nkrc::nbed::stm32::f7::CanMode;
-// using enum nkrc::nbed::stm32::f7::EncoderTimer;
 using enum nkrc::nbed::stm32::f7::GpioPull;
 using enum nkrc::nbed::stm32::f7::I2cPeripheral;
 using enum nkrc::nbed::stm32::f7::PwmTimer;
@@ -166,15 +186,24 @@ using enum nkrc::nbed::stm32::f7::UartPeripheral;
 #endif  // NBED_NO_GLOBAL_NAMES
 
 #ifndef NBED_NO_GLOBAL_FUNCTIONS
+/// @brief 秒数を指定して待機する。
+/// @param sec 待機時間。例として 2s は 2 秒。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(std::chrono::seconds sec) {
   nkrc::nbed::stm32::f7::ClockManager::GetClock().Sleep(
       std::chrono::duration_cast<std::chrono::milliseconds>(sec));
 }
 
+/// @brief ミリ秒単位の時間を指定して待機する。
+/// @param ms 待機時間。例として 500ms は 0.5 秒。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(std::chrono::milliseconds ms) {
   nkrc::nbed::stm32::f7::ClockManager::GetClock().Sleep(ms);
 }
 
+/// @brief 整数のミリ秒数を指定して待機する。
+/// @param ms 待機するミリ秒数。
+/// @note メインループから呼ぶ。割り込みの中では使用しない。
 inline void SleepFor(uint32_t ms) {
   nkrc::nbed::stm32::f7::ClockManager::GetClock().Sleep(ms);
 }

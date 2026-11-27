@@ -128,10 +128,13 @@ inline std::array<unsigned, 9> uart_clock_sources{};
 #define __HAL_RCC_UART7_CLK_ENABLE() (uart_clocks[7] = true)
 #define __HAL_RCC_UART8_CLK_ENABLE() (uart_clocks[8] = true)
 inline constexpr unsigned RCC_USART1CLKSOURCE_PCLK2 = 2,
-    RCC_USART2CLKSOURCE_PCLK1 = 1, RCC_USART3CLKSOURCE_PCLK1 = 1,
-    RCC_UART4CLKSOURCE_PCLK1 = 1, RCC_UART5CLKSOURCE_PCLK1 = 1,
-    RCC_USART6CLKSOURCE_PCLK2 = 2, RCC_UART7CLKSOURCE_PCLK1 = 1,
-    RCC_UART8CLKSOURCE_PCLK1 = 1;
+                          RCC_USART2CLKSOURCE_PCLK1 = 1,
+                          RCC_USART3CLKSOURCE_PCLK1 = 1,
+                          RCC_UART4CLKSOURCE_PCLK1 = 1,
+                          RCC_UART5CLKSOURCE_PCLK1 = 1,
+                          RCC_USART6CLKSOURCE_PCLK2 = 2,
+                          RCC_UART7CLKSOURCE_PCLK1 = 1,
+                          RCC_UART8CLKSOURCE_PCLK1 = 1;
 #define __HAL_RCC_USART1_CONFIG(source) (uart_clock_sources[1] = (source))
 #define __HAL_RCC_USART2_CONFIG(source) (uart_clock_sources[2] = (source))
 #define __HAL_RCC_USART3_CONFIG(source) (uart_clock_sources[3] = (source))
@@ -161,6 +164,7 @@ enum IRQn_Type {
   CAN_RX0_IRQn,
   CAN1_RX0_IRQn,
   CAN2_RX0_IRQn,
+  CAN3_RX0_IRQn,
   DMA1_Channel1_IRQn,
   DMA1_Channel2_IRQn,
   DMA1_Channel3_IRQn,
@@ -201,51 +205,61 @@ struct UART_HandleTypeDef {
   UART_InitTypeDef Init{};
 
   struct AdvancedInitType {
-    uint32_t AdvFeatureInit{}, TxPinLevelInvert{}, RxPinLevelInvert{}, DataInvert{},
-        Swap{}, OverrunDisable{}, DMADisableonRxError{}, AutoBaudRateEnable{},
-        AutoBaudRateMode{}, MSBFirst{};
+    uint32_t AdvFeatureInit{}, TxPinLevelInvert{}, RxPinLevelInvert{},
+        DataInvert{}, Swap{}, OverrunDisable{}, DMADisableonRxError{},
+        AutoBaudRateEnable{}, AutoBaudRateMode{}, MSBFirst{};
   } AdvancedInit;
-
 };
 
 using UART_AdvFeatureInitTypeDef = UART_HandleTypeDef::AdvancedInitType;
 inline constexpr uint32_t UART_WORDLENGTH_8B = 0, UART_WORDLENGTH_9B = 1U << 12,
-    UART_STOPBITS_1 = 0, UART_STOPBITS_2 = 2U << 12,
-    UART_PARITY_NONE = 0, UART_PARITY_EVEN = 1U << 10,
-    UART_PARITY_ODD = (1U << 10) | (1U << 9),
-    UART_MODE_RX = 1U << 2, UART_MODE_TX = 1U << 3,
-    UART_MODE_TX_RX = UART_MODE_RX | UART_MODE_TX,
-    UART_HWCONTROL_NONE = 0, UART_HWCONTROL_RTS = 1U << 8,
-    UART_HWCONTROL_CTS = 1U << 9,
-    UART_HWCONTROL_RTS_CTS = UART_HWCONTROL_RTS | UART_HWCONTROL_CTS,
-    UART_OVERSAMPLING_16 = 0, UART_OVERSAMPLING_8 = 1U << 15,
-    UART_ONE_BIT_SAMPLE_DISABLE = 0, UART_ONE_BIT_SAMPLE_ENABLE = 1U << 11,
-    UART_ADVFEATURE_NO_INIT = 0;
+                          UART_STOPBITS_1 = 0, UART_STOPBITS_2 = 2U << 12,
+                          UART_PARITY_NONE = 0, UART_PARITY_EVEN = 1U << 10,
+                          UART_PARITY_ODD = (1U << 10) | (1U << 9),
+                          UART_MODE_RX = 1U << 2, UART_MODE_TX = 1U << 3,
+                          UART_MODE_TX_RX = UART_MODE_RX | UART_MODE_TX,
+                          UART_HWCONTROL_NONE = 0, UART_HWCONTROL_RTS = 1U << 8,
+                          UART_HWCONTROL_CTS = 1U << 9,
+                          UART_HWCONTROL_RTS_CTS =
+                              UART_HWCONTROL_RTS | UART_HWCONTROL_CTS,
+                          UART_OVERSAMPLING_16 = 0,
+                          UART_OVERSAMPLING_8 = 1U << 15,
+                          UART_ONE_BIT_SAMPLE_DISABLE = 0,
+                          UART_ONE_BIT_SAMPLE_ENABLE = 1U << 11,
+                          UART_ADVFEATURE_NO_INIT = 0;
 #if !defined(STM32F446xx)
 #define UART_WORDLENGTH_7B (1U << 28)
 #define UART_STOPBITS_0_5 (1U << 12)
 #define UART_STOPBITS_1_5 (3U << 12)
 #endif
 inline constexpr uint32_t UART_ADVFEATURE_TXINVERT_INIT = 1,
-    UART_ADVFEATURE_RXINVERT_INIT = 2, UART_ADVFEATURE_DATAINVERT_INIT = 4,
-    UART_ADVFEATURE_SWAP_INIT = 8, UART_ADVFEATURE_RXOVERRUNDISABLE_INIT = 16,
-    UART_ADVFEATURE_DMADISABLEONERROR_INIT = 32,
-    UART_ADVFEATURE_AUTOBAUDRATE_INIT = 64, UART_ADVFEATURE_MSBFIRST_INIT = 128,
-    UART_ADVFEATURE_TXINV_DISABLE = 0, UART_ADVFEATURE_TXINV_ENABLE = 1U << 17,
-    UART_ADVFEATURE_RXINV_DISABLE = 0, UART_ADVFEATURE_RXINV_ENABLE = 1U << 16,
-    UART_ADVFEATURE_DATAINV_DISABLE = 0, UART_ADVFEATURE_DATAINV_ENABLE = 1U << 18,
-    UART_ADVFEATURE_SWAP_DISABLE = 0, UART_ADVFEATURE_SWAP_ENABLE = 1U << 15,
-    UART_ADVFEATURE_OVERRUN_ENABLE = 0, UART_ADVFEATURE_OVERRUN_DISABLE = 1U << 12,
-    UART_ADVFEATURE_DMA_ENABLEONRXERROR = 0,
-    UART_ADVFEATURE_DMA_DISABLEONRXERROR = 1U << 13,
-    UART_ADVFEATURE_AUTOBAUDRATE_DISABLE = 0,
-    UART_ADVFEATURE_AUTOBAUDRATE_ENABLE = 1U << 20,
-    UART_ADVFEATURE_MSBFIRST_DISABLE = 0,
-    UART_ADVFEATURE_MSBFIRST_ENABLE = 1U << 19,
-    UART_ADVFEATURE_AUTOBAUDRATE_ONSTARTBIT = 0,
-    UART_ADVFEATURE_AUTOBAUDRATE_ONFALLINGEDGE = 1U << 21,
-    UART_ADVFEATURE_AUTOBAUDRATE_ON0X7FFRAME = 2U << 21,
-    UART_ADVFEATURE_AUTOBAUDRATE_ON0X55FRAME = 3U << 21;
+                          UART_ADVFEATURE_RXINVERT_INIT = 2,
+                          UART_ADVFEATURE_DATAINVERT_INIT = 4,
+                          UART_ADVFEATURE_SWAP_INIT = 8,
+                          UART_ADVFEATURE_RXOVERRUNDISABLE_INIT = 16,
+                          UART_ADVFEATURE_DMADISABLEONERROR_INIT = 32,
+                          UART_ADVFEATURE_AUTOBAUDRATE_INIT = 64,
+                          UART_ADVFEATURE_MSBFIRST_INIT = 128,
+                          UART_ADVFEATURE_TXINV_DISABLE = 0,
+                          UART_ADVFEATURE_TXINV_ENABLE = 1U << 17,
+                          UART_ADVFEATURE_RXINV_DISABLE = 0,
+                          UART_ADVFEATURE_RXINV_ENABLE = 1U << 16,
+                          UART_ADVFEATURE_DATAINV_DISABLE = 0,
+                          UART_ADVFEATURE_DATAINV_ENABLE = 1U << 18,
+                          UART_ADVFEATURE_SWAP_DISABLE = 0,
+                          UART_ADVFEATURE_SWAP_ENABLE = 1U << 15,
+                          UART_ADVFEATURE_OVERRUN_ENABLE = 0,
+                          UART_ADVFEATURE_OVERRUN_DISABLE = 1U << 12,
+                          UART_ADVFEATURE_DMA_ENABLEONRXERROR = 0,
+                          UART_ADVFEATURE_DMA_DISABLEONRXERROR = 1U << 13,
+                          UART_ADVFEATURE_AUTOBAUDRATE_DISABLE = 0,
+                          UART_ADVFEATURE_AUTOBAUDRATE_ENABLE = 1U << 20,
+                          UART_ADVFEATURE_MSBFIRST_DISABLE = 0,
+                          UART_ADVFEATURE_MSBFIRST_ENABLE = 1U << 19,
+                          UART_ADVFEATURE_AUTOBAUDRATE_ONSTARTBIT = 0,
+                          UART_ADVFEATURE_AUTOBAUDRATE_ONFALLINGEDGE = 1U << 21,
+                          UART_ADVFEATURE_AUTOBAUDRATE_ON0X7FFRAME = 2U << 21,
+                          UART_ADVFEATURE_AUTOBAUDRATE_ON0X55FRAME = 3U << 21;
 #define IS_UART_HWFLOW_INSTANCE(x) ((x) != nullptr)
 #define IS_UART_BAUDRATE(x) ((x) <= 27000000U)
 #define IS_UART_AUTOBAUDRATE_DETECTION_INSTANCE(x) ((x) == USART1)
@@ -284,7 +298,8 @@ inline HAL_StatusTypeDef HAL_UART_DeInit(UART_HandleTypeDef*) {
 }
 
 inline HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef* handle,
-                                         uint8_t* data, uint16_t size, uint32_t timeout) {
+                                           uint8_t* data, uint16_t size,
+                                           uint32_t timeout) {
   last_uart_io = handle;
   uart_tx_timeout = timeout;
   uart_transfer_count = size;
@@ -293,7 +308,9 @@ inline HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef* handle,
     return HAL_ERROR;
   }
   const auto bytes = handle->Init.WordLength == UART_WORDLENGTH_9B &&
-                     handle->Init.Parity == UART_PARITY_NONE ? size * 2U : size;
+                             handle->Init.Parity == UART_PARITY_NONE
+                         ? size * 2U
+                         : size;
   tx_data.insert(tx_data.end(), data, data + bytes);
   return HAL_OK;
 }
@@ -325,13 +342,19 @@ struct SPI_TypeDef {
   bool enabled{false};
 };
 
-inline SPI_TypeDef spi1, spi2, spi3;
+inline SPI_TypeDef spi1, spi2, spi3, spi4, spi5, spi6;
 #define SPI1 (&spi1)
 #define SPI2 (&spi2)
 #define SPI3 (&spi3)
+#define SPI4 (&spi4)
+#define SPI5 (&spi5)
+#define SPI6 (&spi6)
 #define __HAL_RCC_SPI1_CLK_ENABLE() ((void)0)
 #define __HAL_RCC_SPI2_CLK_ENABLE() ((void)0)
 #define __HAL_RCC_SPI3_CLK_ENABLE() ((void)0)
+#define __HAL_RCC_SPI4_CLK_ENABLE() ((void)0)
+#define __HAL_RCC_SPI5_CLK_ENABLE() ((void)0)
+#define __HAL_RCC_SPI6_CLK_ENABLE() ((void)0)
 #define __HAL_SPI_ENABLE(handle) ((handle)->Instance->enabled = true)
 
 inline constexpr uint32_t GPIO_AF5_SPI1 = 5;

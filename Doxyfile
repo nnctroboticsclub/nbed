@@ -1,0 +1,22 @@
+PROJECT_NAME           = nbed
+PROJECT_BRIEF          = "STM32 NUCLEO 向け C++ ライブラリの API リファレンス"
+OUTPUT_LANGUAGE        = Japanese
+OUTPUT_DIRECTORY       = build/doxygen
+INPUT                  = include/nbed.h include/units.h include/interface \
+                         include/f3 include/f4 include/f7 \
+                         include/detail/interrupt_input.h
+EXCLUDE_PATTERNS       = */pin_routes.h
+FILE_PATTERNS          = *.h
+PREDEFINED             = STM32F446xx
+SEARCH_INCLUDES        = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_ALL            = NO
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = FAIL_ON_WARNINGS
+GENERATE_HTML          = YES
+GENERATE_XML           = YES
+GENERATE_LATEX         = NO
+HAVE_DOT               = NO
+QUIET                  = YES

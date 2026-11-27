@@ -65,13 +65,13 @@ Pwm inverted(kTim2, kCh1, kPA0, 1'000,
 
 アイドル状態は、出力許可・MOE・OSSR/OSSI などの条件に応じてハードウェアが適用します。
 アイドル値の指定だけで `Stop()` 後の端子レベルが無条件に固定されるという意味ではありません。
-TIM2/3 はデッドタイム・アイドル状態・OSSR/OSSI の非既定設定に対応せず、初期化時に拒否します。
+デッドタイム・アイドル状態・OSSR/OSSI は、F303K8 の TIM1／15／16／17、F446RE／F767ZI の TIM1／8 で設定できます。
 極性を個別に反転した場合、CHx/CHxN が論理的な反転関係になるとは限りません。
 
 開始・停止には `HAL_TIM_PWM_Start/Stop` と `HAL_TIMEx_PWMN_Start/Stop`、
 出力設定には `HAL_TIM_PWM_ConfigChannel` と `HAL_TIMEx_ConfigBreakDeadTime` を使います。
 ブレーク入力は無効、ロックはオフ、自動出力は無効として初期化します。
-DMA、ブレーク入力の設定、割り込み転送、センターアラインなどの追加 API は今回含めていません。
+通常出力の DMA は [DMA ガイド](dma.md)にあります。相補出力、ブレーク入力の設定、センターアラインの切替は DMA 波形転送の対象外です。
 
 ## デッドタイムの単位
 
@@ -90,14 +90,9 @@ nbed の PWM は `ClockDivision = DIV1` を使います。例えば既定の F30
 
 ## 対応ピン
 
-| MCU | タイマ | CH1N | CH2N | CH3N |
-| --- | --- | --- | --- | --- |
-| F303K8 | TIM1（AF6） | PA7 / PA11 | PA12 / PB0 | PB1 |
-| F303K8 | TIM15（AF9） | PA1 | — | — |
-| F303K8 | TIM16（AF1） | PA13 / PB6 | — | — |
-| F303K8 | TIM17（AF1） | PB7 | — | — |
-| F446RE | TIM1（AF1） | PA7 / PB13 | PB0 / PB14 | PB1 / PB15 |
-| F767ZI | TIM1（AF1） | PA7 / PB13 / PE8 | PB0 / PB14 / PE10 | PB1 / PB15 / PE12 |
+- [F303K8 の PWM・相補出力](pinout.md#f303k8-tim)
+- [F446RE の PWM・相補出力](pinout.md#f446re-tim)
+- [F767ZI の PWM・相補出力](pinout.md#f767zi-tim)
 
 同じピンをほかの出力や周辺機能と併用しないでください。PA13 は SWD、F767ZI の PA7 は Ethernet PHY と共用です。
 F303K8 の PB6/PB7 は、Nucleo-32 のはんだブリッジによって PA6/PA5 にも接続される場合があります。

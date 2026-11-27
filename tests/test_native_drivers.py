@@ -20,12 +20,15 @@ class NativeDriverTests(unittest.TestCase):
       for header in (f"stm32{family}xx.h", f"stm32{family}xx_hal.h",
                      f"stm32{family}xx_hal_gpio.h", f"stm32{family}xx_hal_gpio_ex.h",
                      f"stm32{family}xx_hal_rcc.h", f"stm32{family}xx_hal_uart.h",
+                     f"stm32{family}xx_hal_rcc_ex.h", f"stm32{family}xx_hal_tim.h",
                      f"stm32{family}xx_hal_spi.h", f"stm32{family}xx_hal_adc.h",
                      f"stm32{family}xx_hal_can.h", f"stm32{family}xx_hal_cortex.h",
-                     f"stm32{family}xx_hal_i2c.h", f"stm32{family}xx_hal_pwr_ex.h"):
+                     f"stm32{family}xx_hal_i2c.h", f"stm32{family}xx_hal_fmpi2c.h",
+                     f"stm32{family}xx_hal_pwr_ex.h"):
         stub = ("can_hal_stubs.h" if suite == "can" else
                 "f3_pwm_hal_stubs.h" if suite in ("f3_pwm", "pwm_outputs", "dma") else
-                "f7_hal_stubs.h" if suite in ("f7_clock", "f7_peripherals") else
+                "f7_hal_stubs.h" if suite == "f7_clock" else
+                "analog_i2c_hal_stubs.h" if suite == "analog_i2c" else
                 "hal_stubs.h")
         (directory / header).write_text(f'#include "{stub}"\n', encoding="utf-8")
       executable = directory / f"{family}-test.exe"
@@ -34,9 +37,9 @@ class NativeDriverTests(unittest.TestCase):
                  "uart": ("uart", "pin_mapper"),
                  "exti": ("interrupt_in", "gpio", "pin_mapper"),
                  "f3_pwm": ("pwm", "timer_reservation", "pin_mapper"),
-                 "pwm_outputs": ("pwm", "timer_reservation", "pin_mapper"),
+                 "pwm_outputs": ("pwm", "encoder", "timer_reservation", "pin_mapper"),
                  "f7_clock": ("clock", "time"),
-                 "f7_peripherals": ("i2c", "analog_in", "pin_mapper")}.get(
+                 "analog_i2c": ("i2c", "analog_in", "pin_mapper")}.get(
                      suite, ("gpio", "pin_mapper", "time", "timer_reservation", "uart"))
       if suite == "dma":
         drivers = ("pwm", "uart", "timer_reservation", "pin_mapper")
@@ -128,8 +131,14 @@ class NativeDriverTests(unittest.TestCase):
   def test_f7_clock(self):
     self.run_family("f7", "STM32F767xx", "f7_clock")
 
-  def test_f7_peripherals(self):
-    self.run_family("f7", "STM32F767xx", "f7_peripherals")
+  def test_f3_analog_i2c(self):
+    self.run_family("f3", "STM32F303x8", "analog_i2c")
+
+  def test_f4_analog_i2c(self):
+    self.run_family("f4", "STM32F446xx", "analog_i2c")
+
+  def test_f7_analog_i2c(self):
+    self.run_family("f7", "STM32F767xx", "analog_i2c")
 
 
 if __name__ == "__main__":

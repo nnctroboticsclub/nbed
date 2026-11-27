@@ -41,7 +41,7 @@ constexpr std::optional<uint32_t> I2cTimingHsi8Mhz(uint32_t frequency_hz) {
   return std::nullopt;
 }
 
-// F7 I2C v2 with the fixed 16 MHz HSI kernel clock. Work in half-nanoseconds
+// F7 I2C and F446 FMPI2C with a fixed 16 MHz HSI kernel clock. Use half-nanoseconds
 // to represent its 62.5 ns period exactly. Analog filter: 50..260 ns; DNF=0.
 // Standard-mode rise <= 1000 ns, fast-mode rise <= 100 ns, fall <= 300 ns.
 constexpr std::optional<uint32_t> I2cTimingHsi16Mhz(uint32_t frequency_hz) {

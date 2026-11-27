@@ -2,40 +2,64 @@
 
 #include "f7/analog_in.h"
 
+#include <array>
 #include <cmath>
 
 #include "f7/pin_mapper.h"
+#include "f7/pin_routes.h"
 #include "stm32f7xx_hal_adc.h"
 #include "stm32f7xx_hal_gpio.h"
 #include "stm32f7xx_hal_rcc.h"
 
 namespace nkrc::nbed::stm32::f7 {
 namespace {
+
 struct AdcState {
   ADC_HandleTypeDef handle{};
   bool initialized{false};
   uint32_t last_channel{0xffffffffU};
 };
 
-AdcState& StateFor(interface::PinName pin) {
-  static AdcState adc1, adc3;
-  return (static_cast<uint8_t>(pin) >> 4) == 5 ? adc3 : adc1;
+AdcState& StateFor(uint8_t number) {
+  static std::array<AdcState, 3> states{};
+  return states[number - 1U];
 }
 
-bool InitializeAdc(interface::PinName pin) {
-  AdcState& state = StateFor(pin);
+const PinRoute* FindAdcRoute(AdcPeripheral peripheral, interface::PinName pin) {
+  if (peripheral != AdcPeripheral::kAdcAuto) {
+    return detail::FindPinRoute(kAdcPins, static_cast<uint8_t>(peripheral),
+                                PinSignal::kAnalog, pin);
+  }
+  // Preserve the original default for each pin. Shared pins select ADC1.
+  for (const auto& route : kAdcPins) {
+    if (route.pin == pin) {
+      return &route;
+    }
+  }
+  return nullptr;
+}
+
+bool InitializeAdc(uint8_t number) {
+  auto& state = StateFor(number);
   if (state.initialized) {
     return true;
   }
-  ADC_HandleTypeDef& adc = state.handle;
-  if ((static_cast<uint8_t>(pin) >> 4) == 5) {
-    __HAL_RCC_ADC3_CLK_ENABLE();
-    adc.Instance = ADC3;
-  } else {
-    __HAL_RCC_ADC1_CLK_ENABLE();
-    adc.Instance = ADC1;
+  auto& adc = state.handle;
+  switch (number) {
+    case 1:
+      __HAL_RCC_ADC1_CLK_ENABLE();
+      adc.Instance = ADC1;
+      break;
+    case 2:
+      __HAL_RCC_ADC2_CLK_ENABLE();
+      adc.Instance = ADC2;
+      break;
+    case 3:
+      __HAL_RCC_ADC3_CLK_ENABLE();
+      adc.Instance = ADC3;
+      break;
   }
-  // PCLK2 <= 108 MHz: /4 keeps both ADCs below their 36 MHz limit.
+  // /4 keeps the ADC clock within its 36 MHz limit at the maximum PCLK2.
   adc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   adc.Init.Resolution = ADC_RESOLUTION_12B;
   adc.Init.ScanConvMode = DISABLE;
@@ -53,17 +77,26 @@ bool InitializeAdc(interface::PinName pin) {
   state.initialized = true;
   return true;
 }
+
 }  // namespace
 
 AnalogIn::AnalogIn(interface::PinName pin, float reference_voltage)
-    : pin_(pin), reference_voltage_(reference_voltage) {}
+    : AnalogIn(AdcPeripheral::kAdcAuto, pin, reference_voltage) {}
+
+AnalogIn::AnalogIn(AdcPeripheral peripheral, interface::PinName pin,
+                   float reference_voltage)
+    : peripheral_(peripheral),
+      pin_(pin),
+      reference_voltage_(reference_voltage) {}
 
 bool AnalogIn::Initialize() {
-  if (initialized_) {
+  if (adc_number_ != 0U) {
     return true;
   }
-  if (!IsValidPin() || !std::isfinite(reference_voltage_) ||
-      reference_voltage_ <= 0.0F || !InitializeAdc(pin_)) {
+  const auto* route = FindAdcRoute(peripheral_, pin_);
+  if (route == nullptr || !PinMapper::IsValidPin(pin_) ||
+      !std::isfinite(reference_voltage_) || reference_voltage_ <= 0.0F ||
+      !InitializeAdc(route->peripheral)) {
     return false;
   }
   GPIO_InitTypeDef gpio{};
@@ -72,18 +105,19 @@ bool AnalogIn::Initialize() {
   if (!PinMapper::ConfigureGpio(pin_, gpio)) {
     return false;
   }
-  initialized_ = true;
+  adc_number_ = route->peripheral;
+  channel_ = route->value;
   return true;
 }
 
 float AnalogIn::ReadRatio() {
-  if (!initialized_) {
+  if (adc_number_ == 0U) {
     return 0.0F;
   }
-  AdcState& state = StateFor(pin_);
+  AdcState& state = StateFor(adc_number_);
   ADC_HandleTypeDef& adc = state.handle;
   ADC_ChannelConfTypeDef channel{};
-  channel.Channel = Channel();
+  channel.Channel = channel_;
   channel.Rank = 1;
   channel.SamplingTime = ADC_SAMPLETIME_15CYCLES;
   if (state.last_channel != channel.Channel) {
@@ -105,56 +139,6 @@ float AnalogIn::ReadRatio() {
 }
 
 float AnalogIn::ReadVoltage() { return ReadRatio() * reference_voltage_; }
-
-bool AnalogIn::IsValidPin() const {
-  return PinMapper::IsValidPin(pin_) && Channel() != 0xffffffffU;
-}
-
-uint32_t AnalogIn::Channel() const {
-  using interface::PinName;
-  switch (pin_) {
-    case PinName::kPA0:
-      return ADC_CHANNEL_0;
-    case PinName::kPA1:
-      return ADC_CHANNEL_1;
-    case PinName::kPA2:
-      return ADC_CHANNEL_2;
-    case PinName::kPA3:
-      return ADC_CHANNEL_3;
-    case PinName::kPA4:
-      return ADC_CHANNEL_4;
-    case PinName::kPA5:
-      return ADC_CHANNEL_5;
-    case PinName::kPA6:
-      return ADC_CHANNEL_6;
-    case PinName::kPA7:
-      return ADC_CHANNEL_7;
-    case PinName::kPB0:
-      return ADC_CHANNEL_8;
-    case PinName::kPB1:
-      return ADC_CHANNEL_9;
-    case PinName::kPC0:
-      return ADC_CHANNEL_10;
-    case PinName::kPC1:
-      return ADC_CHANNEL_11;
-    case PinName::kPC2:
-      return ADC_CHANNEL_12;
-    case PinName::kPC3:
-      return ADC_CHANNEL_13;
-    case PinName::kPC4:
-      return ADC_CHANNEL_14;
-    case PinName::kPC5:
-      return ADC_CHANNEL_15;
-    case PinName::kPF3:
-      return ADC_CHANNEL_9;
-    case PinName::kPF5:
-      return ADC_CHANNEL_15;
-    case PinName::kPF10:
-      return ADC_CHANNEL_8;
-    default:
-      return 0xffffffffU;
-  }
-}
 
 }  // namespace nkrc::nbed::stm32::f7
 

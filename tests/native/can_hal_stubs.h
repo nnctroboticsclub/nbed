@@ -6,23 +6,28 @@
 
 struct CAN_TypeDef {
   uint32_t ESR{};
+  uint32_t active_filters{};
 };
 
-inline CAN_TypeDef can1, can2;
+inline CAN_TypeDef can1, can2, can3;
 #define CAN (&can1)
 #define CAN1 (&can1)
 #define CAN2 (&can2)
-inline bool can1_clock{}, can2_clock{};
+#define CAN3 (&can3)
+inline bool can1_clock{}, can2_clock{}, can3_clock{};
 #define __HAL_RCC_CAN1_CLK_ENABLE() (can1_clock = true)
 #define __HAL_RCC_CAN2_CLK_ENABLE() (can2_clock = true)
+#define __HAL_RCC_CAN3_CLK_ENABLE() (can3_clock = true)
 #define __HAL_RCC_CAN1_CLK_DISABLE() (can1_clock = false)
 #define __HAL_RCC_CAN2_CLK_DISABLE() (can2_clock = false)
+#define __HAL_RCC_CAN3_CLK_DISABLE() (can3_clock = false)
 
 inline constexpr uint32_t GPIO_AF9_CAN = 9, GPIO_AF9_CAN1 = 9;
 inline constexpr uint32_t CAN_BTR_TS1_Pos = 16, CAN_BTR_TS2_Pos = 20;
 inline constexpr uint32_t CAN_ESR_TEC_Pos = 16, CAN_ESR_REC_Pos = 24;
 inline constexpr uint32_t CAN_ESR_TEC = 0xffU << CAN_ESR_TEC_Pos;
 inline constexpr uint32_t CAN_ESR_REC = 0xffU << CAN_ESR_REC_Pos;
+
 enum {
   DISABLE = 0,
   ENABLE = 1,
@@ -83,27 +88,42 @@ inline HAL_StatusTypeDef HAL_CAN_DeInit(CAN_HandleTypeDef* handle) {
   return HAL_OK;
 }
 
-inline HAL_StatusTypeDef HAL_CAN_ConfigFilter(CAN_HandleTypeDef*,
-                                             CAN_FilterTypeDef*) {
+inline HAL_StatusTypeDef HAL_CAN_ConfigFilter(CAN_HandleTypeDef* handle,
+                                              CAN_FilterTypeDef* filter) {
+  if (can_filter_status == HAL_OK) {
+    auto* instance = handle->Instance == CAN2 ? CAN1 : handle->Instance;
+    const auto mask = uint32_t{1} << filter->FilterBank;
+    if (filter->FilterActivation == ENABLE) {
+      instance->active_filters |= mask;
+    } else {
+      instance->active_filters &= ~mask;
+    }
+  }
   return can_filter_status;
 }
 
 inline HAL_StatusTypeDef HAL_CAN_Start(CAN_HandleTypeDef*) { return HAL_OK; }
+
 inline HAL_StatusTypeDef HAL_CAN_Stop(CAN_HandleTypeDef*) { return HAL_OK; }
+
 inline HAL_StatusTypeDef HAL_CAN_ActivateNotification(CAN_HandleTypeDef*,
-                                                     uint32_t) {
+                                                      uint32_t) {
   return HAL_OK;
 }
+
 inline void HAL_CAN_IRQHandler(CAN_HandleTypeDef*) {}
+
 inline uint32_t HAL_CAN_GetRxFifoFillLevel(CAN_HandleTypeDef*, uint32_t) {
   return 0;
 }
+
 inline HAL_StatusTypeDef HAL_CAN_GetRxMessage(CAN_HandleTypeDef*, uint32_t,
-                                             CAN_RxHeaderTypeDef*, uint8_t*) {
+                                              CAN_RxHeaderTypeDef*, uint8_t*) {
   return HAL_ERROR;
 }
+
 inline HAL_StatusTypeDef HAL_CAN_AddTxMessage(CAN_HandleTypeDef*,
-                                             CAN_TxHeaderTypeDef*,
-                                             const uint8_t*, uint32_t*) {
+                                              CAN_TxHeaderTypeDef*,
+                                              const uint8_t*, uint32_t*) {
   return HAL_OK;
 }

@@ -5,12 +5,15 @@
 
 #include "f3_pwm_hal_stubs.h"
 #ifdef STM32F303x8
+#include "f3/encoder.h"
 #include "f3/pwm.h"
 namespace device = nkrc::nbed::stm32::f3;
 #elif defined(STM32F767xx)
+#include "f7/encoder.h"
 #include "f7/pwm.h"
 namespace device = nkrc::nbed::stm32::f7;
 #else
+#include "f4/encoder.h"
 #include "f4/pwm.h"
 namespace device = nkrc::nbed::stm32::f4;
 #endif
@@ -37,6 +40,7 @@ const std::array kMappings{
     Mapping{PwmTimer::kTim1, PwmChannel::kCh2N, PinName::kPA12, 6},
     Mapping{PwmTimer::kTim1, PwmChannel::kCh2N, PinName::kPB0, 6},
     Mapping{PwmTimer::kTim1, PwmChannel::kCh3N, PinName::kPB1, 6},
+    Mapping{PwmTimer::kTim1, PwmChannel::kCh3N, PinName::kPF0, 6},
     Mapping{PwmTimer::kTim15, PwmChannel::kCh1N, PinName::kPA1, 9},
     Mapping{PwmTimer::kTim16, PwmChannel::kCh1N, PinName::kPA13, 1},
     Mapping{PwmTimer::kTim16, PwmChannel::kCh1N, PinName::kPB6, 1},
@@ -48,6 +52,12 @@ const std::array kMappings{
     Mapping{PwmTimer::kTim1, PwmChannel::kCh2N, PinName::kPB14, 1},
     Mapping{PwmTimer::kTim1, PwmChannel::kCh3N, PinName::kPB1, 1},
     Mapping{PwmTimer::kTim1, PwmChannel::kCh3N, PinName::kPB15, 1},
+    Mapping{PwmTimer::kTim8, PwmChannel::kCh1N, PinName::kPA5, 3},
+    Mapping{PwmTimer::kTim8, PwmChannel::kCh1N, PinName::kPA7, 3},
+    Mapping{PwmTimer::kTim8, PwmChannel::kCh2N, PinName::kPB0, 3},
+    Mapping{PwmTimer::kTim8, PwmChannel::kCh2N, PinName::kPB14, 3},
+    Mapping{PwmTimer::kTim8, PwmChannel::kCh3N, PinName::kPB1, 3},
+    Mapping{PwmTimer::kTim8, PwmChannel::kCh3N, PinName::kPB15, 3},
 #ifdef STM32F767xx
     Mapping{PwmTimer::kTim1, PwmChannel::kCh1N, PinName::kPE8, 1},
     Mapping{PwmTimer::kTim1, PwmChannel::kCh2N, PinName::kPE10, 1},
@@ -62,6 +72,9 @@ void CheckPins() {
 #ifdef STM32F303x8
                            ,
                            PwmTimer::kTim15, PwmTimer::kTim16, PwmTimer::kTim17
+#else
+                           ,
+                           PwmTimer::kTim8
 #endif
        }) {
     for (const auto channel :
@@ -211,10 +224,81 @@ void CheckFailures() {
 }
 }  // namespace
 
+#ifndef STM32F303x8
+void CheckAdditionalTimers() {
+  using enum PinName;
+  using enum PwmTimer;
+
+  struct Case {
+    PwmTimer timer;
+    PwmChannel channel;
+    PinName pin;
+    TIM_TypeDef* instance;
+    uint32_t alternate;
+    uint32_t clock;
+  };
+
+  const uint32_t apb1 = HAL_RCC_GetPCLK1Freq() * 2;
+  const uint32_t apb2 = HAL_RCC_GetPCLK2Freq();
+  const std::array cases{
+      Case{kTim4, PwmChannel::kCh4, kPB9, TIM4, 2, apb1},
+      Case{kTim5, PwmChannel::kCh3, kPA2, TIM5, 2, apb1},
+      Case{kTim8, PwmChannel::kCh4, kPC9, TIM8, 3, apb2},
+      Case{kTim9, PwmChannel::kCh2, kPA3, TIM9, 3, apb2},
+      Case{kTim10, PwmChannel::kCh1, kPB8, TIM10, 3, apb2},
+      Case{kTim11, PwmChannel::kCh1, kPB9, TIM11, 3, apb2},
+      Case{kTim12, PwmChannel::kCh2, kPB15, TIM12, 9, apb1},
+      Case{kTim13, PwmChannel::kCh1, kPA6, TIM13, 9, apb1},
+      Case{kTim14, PwmChannel::kCh1, kPA7, TIM14, 9, apb1},
+#ifdef STM32F767xx
+      Case{kTim4, PwmChannel::kCh1, kPD12, TIM4, 2, apb1},
+      Case{kTim9, PwmChannel::kCh2, kPE6, TIM9, 3, apb2},
+      Case{kTim10, PwmChannel::kCh1, kPF6, TIM10, 3, apb2},
+      Case{kTim11, PwmChannel::kCh1, kPF7, TIM11, 3, apb2},
+      Case{kTim13, PwmChannel::kCh1, kPF8, TIM13, 9, apb1},
+      Case{kTim14, PwmChannel::kCh1, kPF9, TIM14, 9, apb1},
+#endif
+  };
+  for (const auto& route : cases) {
+    Pwm pwm(route.timer, route.channel, route.pin, 50);
+    assert(pwm.Initialize() && last_pwm_init.Instance == route.instance);
+    assert(route.instance->clock_enabled);
+    assert(gpio_inits.back().second.Alternate == route.alternate);
+    assert(pwm.GetFrequencyHz() ==
+           route.clock / (route.instance->PSC + 1U) / pwm.GetPeriodTicks());
+    assert(pwm.SetDutyCycle(1.0F) && pwm.SetFrequencyHz(100));
+  }
+
+  Pwm pwm(kTim5, PwmChannel::kCh3, kPA2, 100);
+  Encoder encoder(EncoderTimer::kTim5, kPA0, kPA1, 400);
+  assert(pwm.Initialize() && !encoder.Initialize());
+  pwm.Stop();
+  assert(encoder.Initialize() && last_encoder_init.Instance == TIM5);
+  assert(last_encoder_init.Init.Period == 0xffffffffU && !pwm.Initialize());
+  TIM5->CNT = 0xffff'ffffU;
+  assert(encoder.GetCount() == -1);
+  encoder.ResetCount();
+  assert(encoder.GetCount() == 0);
+
+  Encoder encoder4(EncoderTimer::kTim4, kPB6, kPB7, 400);
+  Encoder encoder8(EncoderTimer::kTim8, kPC6, kPC7, 400);
+  assert(encoder4.Initialize() && last_encoder_init.Instance == TIM4);
+  TIM4->CNT = 0xffffU;
+  assert(encoder4.GetCount() == -1);
+  assert(encoder8.Initialize() && last_encoder_init.Instance == TIM8);
+  assert(gpio_inits.back().second.Alternate == 3);
+  Encoder unsupported(static_cast<EncoderTimer>(6), kPA2, kPA3, 400);
+  assert(!unsupported.Initialize());
+}
+#endif
+
 int main() {
   CheckPins();
   CheckPairAndOwnership();
   CheckConfiguration();
   CheckInvalidConfiguration();
   CheckFailures();
+#ifndef STM32F303x8
+  CheckAdditionalTimers();
+#endif
 }

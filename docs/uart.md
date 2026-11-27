@@ -34,44 +34,13 @@ int main() {
 同じ行のRX候補とTX候補を個別に選べます。異なるポート・異なるAF番号の組み合わせにも対応します。
 表は対応するMCUパッケージで使用できるピンです。ボード上の配線や、ほかの機能との共用は別途確認してください。
 
-### F303K8（LQFP32）
+- [F303K8 の RX／TX／CTS／RTS](pinout.md#f303k8-uart)
+- [F446RE の RX／TX／CTS／RTS](pinout.md#f446re-uart)
+- [F767ZI の RX／TX／CTS／RTS](pinout.md#f767zi-uart)
 
-| 指定名 | RX | TX | AF |
-| --- | --- | --- | --- |
-| `kUsart1` | PA10 / PB7 | PA9 / PB6 | 7 |
-| `kUsart2` | PA3 / PA15 / PB4 | PA2 / PA14 / PB3 | 7 |
-
-PA14はSWCLKです。デバッグ接続を維持する場合は、USART2のTXにPA2またはPB3を選んでください。
-PB3/PB4/PA15もデバッグ機能と共用するため、使用するデバッグ設定を確認してください。
-
-### F446RE（LQFP64）
-
-| 指定名 | RX | TX | AF |
-| --- | --- | --- | --- |
-| `kUsart1` | PA10 / PB7 | PA9 / PB6 | 7 |
-| `kUsart2` | PA3 | PA2 | 7 |
-| `kUsart3` | PC5 / PC11 | PB10 / PC10 | 7 |
-| `kUart4` | PA1 / PC11 | PA0 / PC10 | 8 |
-| `kUart5` | PD2 | PC12 | 8 |
-| `kUsart6` | PC7 | PC6 | 8 |
-
-### F767ZI（LQFP144）
-
-括弧内はそのピンのAF番号です。nbedがRX/TXそれぞれの番号を設定します。
-
-| 指定名 | RX | TX |
-| --- | --- | --- |
-| `kUsart1` | PA10 / PB7（AF7）、PB15（AF4） | PA9 / PB6（AF7）、PB14（AF4） |
-| `kUsart2` | PA3 / PD6（AF7） | PA2 / PD5（AF7） |
-| `kUsart3` | PB11 / PC11 / PD9（AF7） | PB10 / PC10 / PD8（AF7） |
-| `kUart4` | PA1 / PC11 / PD0（AF8）、PA11（AF6） | PA0 / PC10 / PD1（AF8）、PA12（AF6） |
-| `kUart5` | PD2 / PB12（AF8）、PB5（AF1）、PB8（AF7） | PC12 / PB13（AF8）、PB6（AF1）、PB9（AF7） |
-| `kUsart6` | PC7 / PG9（AF8） | PC6 / PG14（AF8） |
-| `kUart7` | PE7 / PF6（AF8）、PA8 / PB3（AF12） | PE8 / PF7（AF8）、PA15 / PB4（AF12） |
-| `kUart8` | PE0（AF8） | PE1（AF8） |
-
-たとえば `Uart serial(kUsart1, kPB15, kPA9, 115200);` は、RXをAF4、TXをAF7で初期化します。
-UART7のPA15/PB3/PB4はデバッグ機能と共用するため、デバッグ設定を確認してください。
+たとえば F767ZI の `Uart serial(kUsart1, kPB15, kPA9, 115200);` は、RX を AF4、
+TX を AF7 で初期化します。PA13／PA14 は SWD、PA15／PB3／PB4 は JTAG・SWO と共用する
+場合があります。基板のデバッグ配線を確認してください。
 
 ## 送受信と割り込み
 
@@ -164,20 +133,7 @@ Uart serial(config);
 CTSのみ・RTSのみも指定できます。指定したフロー制御に対応するピンが必要です。
 使用しない制御ピンは `kNC` にします。
 
-| MCU | 周辺機能 | CTS | RTS |
-| --- | --- | --- | --- |
-| F3/F4/F7 | USART1 | PA11 | PA12 |
-| F3/F4 | USART2 | PA0 | PA1 |
-| F4 | USART3 | PB13 | PB14 |
-| F4 | UART4 | PB0 | PA15 |
-| F4 | UART5 | PC9 | PC8 |
-| F7 | USART2 | PA0 / PD3 | PA1 / PD4 |
-| F7 | USART3 | PB13 / PD11 | PB14 / PD12 |
-| F7 | UART4 | PB0 / PB15 | PA15 / PB14 |
-| F7 | UART5 | PC9 | PC8 |
-| F7 | USART6 | PG13 / PG15 | PG8 / PG12 |
-| F7 | UART7 | PE10 / PF9 | PE9 / PF8 |
-| F7 | UART8 | PD14 | PD15 |
+各信号の AF は [対応ピン一覧](#対応ピン)から確認できます。
 
 F446REのUSART6はパッケージにCTS/RTSピンがないため、フロー制御を指定すると失敗します。
 

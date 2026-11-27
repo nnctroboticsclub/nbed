@@ -114,11 +114,14 @@ int main() {
   assert(TimerReservation::ClaimEncoder(0));
   assert(!TimerReservation::ClaimPwm(0, 0));
   TimerReservation::ReleaseEncoder(0);
-  assert(!TimerReservation::ClaimEncoder(3));
+  assert(!TimerReservation::ClaimEncoder(255));
   assert(!TimerReservation::ClaimPwm(0, 4));
 
   assert(!ComputePwmTiming(64'000'000, 0, 65535));
   assert(!ComputePwmTiming(64'000'000, 64'000'001, 65535));
+  const auto full_duty = ComputePwmTiming(65'536'000, 1000, 65'535);
+  assert(full_duty && full_duty->actual_hz == 1000 &&
+         PwmDutyTicks(1.0F, full_duty->period) <= 65'535);
   for (uint32_t frequency : {1U, 50U, 1000U, 20'000U, 64'000'000U}) {
     auto timing = ComputePwmTiming(64'000'000, frequency, 65535);
     assert(timing && timing->period <= 65535 && timing->prescaler <= 65535);

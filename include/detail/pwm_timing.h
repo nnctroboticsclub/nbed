@@ -14,14 +14,15 @@ struct Timing {
 constexpr std::optional<Timing> ComputePwmTiming(uint32_t clock_hz,
                                                  uint32_t frequency_hz,
                                                  uint32_t max_period) {
-  if (frequency_hz == 0) {
+  if (frequency_hz == 0 || max_period == 0) {
     return std::nullopt;
   }
   const uint64_t ticks_per_period = clock_hz / frequency_hz;
   if (ticks_per_period == 0) {
     return std::nullopt;
   }
-  const uint64_t counter_range = static_cast<uint64_t>(max_period) + 1ULL;
+  // PWM mode 1 needs CCR > ARR to hold the active level at 100% duty.
+  const uint64_t counter_range = max_period;
   const uint64_t divider =
       (ticks_per_period + counter_range - 1ULL) / counter_range;  // ceil
   if (divider == 0 || divider > 0x10000ULL) {

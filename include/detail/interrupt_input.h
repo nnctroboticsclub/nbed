@@ -17,38 +17,62 @@
 
 namespace nkrc::nbed::detail {
 
-// Restore the caller's interrupt mask, including calls made with IRQs disabled.
+/// @brief EXTI の状態を更新する間だけ割り込みを保留し、終了時に元のマスクを復元する。
 class ExtiCriticalSection {
  public:
+  /// @brief 現在の割り込みマスクを保存して割り込みを止める。
   ExtiCriticalSection() : previous_mask_(__get_PRIMASK()) { __disable_irq(); }
+
+  /// @brief 保存した割り込みマスクを復元する。
   ~ExtiCriticalSection() { __set_PRIMASK(previous_mask_); }
+
+  /// @brief オブジェクトのコピー構築は禁止。
   ExtiCriticalSection(const ExtiCriticalSection&) = delete;
+  /// @brief オブジェクトのコピー代入は禁止。
   ExtiCriticalSection& operator=(const ExtiCriticalSection&) = delete;
 
  private:
   uint32_t previous_mask_;
 };
 
+/// @brief GPIO と EXTI をまとめて扱う割り込み入力の共通実装。
+/// @tparam Mapper ボードの GPIO マッピング型。
+/// @tparam Pull 内部プル抵抗の型。
 template <typename Mapper, typename Pull>
 class InterruptInput : public interface::InterruptIn {
  public:
-  InterruptInput(interface::PinName pin, interface::InterruptEdge edge, Pull pull,
-                 uint32_t interrupt_priority)
+  /// @brief 外部割り込み入力を作る。ピンの設定は Initialize() で行う。
+  /// @param pin 入力ピン。
+  /// @param edge 検出するエッジ。
+  /// @param pull 内部プル抵抗。
+  /// @param interrupt_priority 割り込み優先度（0～15）。
+  InterruptInput(interface::PinName pin, interface::InterruptEdge edge,
+                 Pull pull, uint32_t interrupt_priority)
       : pin_(pin), edge_(edge), pull_(pull), priority_(interrupt_priority) {}
+
+  /// @brief 割り込み入力を停止し、EXTI ラインを解放する。
+  /// @brief エッジの検出を停止し、EXTI ラインを解放する。
   ~InterruptInput() override { Stop(); }
+
+  /// @brief オブジェクトのコピー構築は禁止。
   InterruptInput(const InterruptInput&) = delete;
+  /// @brief オブジェクトのコピー代入は禁止。
   InterruptInput& operator=(const InterruptInput&) = delete;
+  /// @brief オブジェクトのムーブ構築は禁止。
   InterruptInput(InterruptInput&&) = delete;
+  /// @brief オブジェクトのムーブ代入は禁止。
   InterruptInput& operator=(InterruptInput&&) = delete;
 
+  /// @brief 入力ピンと EXTI ラインを設定し、エッジの検出を始める。
+  /// @return 使用権の確保と初期化に成功すれば true。
+  /// @note 同じラインの入力があるか、同じ IRQ 内で優先度が違う場合は false。
   bool Initialize() override {
     const ExtiCriticalSection critical;
     if (initialized_) {
       return true;
     }
     if (!Mapper::IsValidPin(pin_) || priority_ >= (1U << __NVIC_PRIO_BITS) ||
-        static_cast<unsigned>(edge_) > 2 ||
-        static_cast<unsigned>(pull_) > 2) {
+        static_cast<unsigned>(edge_) > 2 || static_cast<unsigned>(pull_) > 2) {
       return false;
     }
     const auto line = Line();
@@ -68,8 +92,7 @@ class InterruptInput : public interface::InterruptIn {
       }
     }
     GPIO_InitTypeDef gpio{};
-    gpio.Mode = edge_ == interface::InterruptEdge::kRising
-                    ? GPIO_MODE_IT_RISING
+    gpio.Mode = edge_ == interface::InterruptEdge::kRising ? GPIO_MODE_IT_RISING
                 : edge_ == interface::InterruptEdge::kFalling
                     ? GPIO_MODE_IT_FALLING
                     : GPIO_MODE_IT_RISING_FALLING;
@@ -117,17 +140,26 @@ class InterruptInput : public interface::InterruptIn {
     HAL_NVIC_ClearPendingIRQ(irq);
   }
 
+  /// @brief エッジ検出時に呼ぶ関数を登録する。
+  /// @param callback 割り込み内で実行する短い処理。空の関数で解除する。
   void SetCallback(const interface::GpioInterruptCallback& callback) override {
     const ExtiCriticalSection critical;
     callback_ = callback;
   }
 
+  /// @brief 入力ピンの現在のレベルを読む。
+  /// @return High なら true。Low または未初期化では false。
   [[nodiscard]] bool Read() const override {
     return initialized_ && HAL_GPIO_ReadPin(port_, pin_mask_) == GPIO_PIN_SET;
   }
 
+  /// @brief 処理したエッジの累計を返す。
+  /// @return Initialize() 以降の累計。32 ビットで周回する。
   [[nodiscard]] uint32_t GetEdgeCount() const override { return edge_count_; }
 
+  /// @brief 発生したエッジを記録し、登録された関数を呼ぶ。
+  /// @param group_mask この IRQ が担当する EXTI ラインのビットマスク。
+  /// @note IRQ ハンドラー用。
   static void HandleInterrupt(uint16_t group_mask) {
     auto& instances = Instances();
     uint16_t owned_mask = 0;
@@ -136,8 +168,8 @@ class InterruptInput : public interface::InterruptIn {
         owned_mask |= static_cast<uint16_t>(1U << line);
       }
     }
-    const auto pending = static_cast<uint16_t>(
-        __HAL_GPIO_EXTI_GET_IT(group_mask & owned_mask));
+    const auto pending =
+        static_cast<uint16_t>(__HAL_GPIO_EXTI_GET_IT(group_mask & owned_mask));
     // Snapshot and clear before callbacks; a new edge remains pending.
     __HAL_GPIO_EXTI_CLEAR_IT(pending);
     for (std::size_t line = 0; line < instances.size(); ++line) {
@@ -162,22 +194,22 @@ class InterruptInput : public interface::InterruptIn {
   }
 
   static IRQn_Type Irq(std::size_t line) {
-    constexpr std::array<IRQn_Type, 5> irqs{
-        EXTI0_IRQn, EXTI1_IRQn,
+    constexpr std::array<IRQn_Type, 5> irqs{EXTI0_IRQn, EXTI1_IRQn,
 #if defined(STM32F303x8)
-        EXTI2_TSC_IRQn,
+                                            EXTI2_TSC_IRQn,
 #else
-        EXTI2_IRQn,
+                                            EXTI2_IRQn,
 #endif
-        EXTI3_IRQn, EXTI4_IRQn};
+                                            EXTI3_IRQn, EXTI4_IRQn};
     return line < irqs.size() ? irqs.at(line)
-                             : line < 10 ? EXTI9_5_IRQn : EXTI15_10_IRQn;
+           : line < 10        ? EXTI9_5_IRQn
+                              : EXTI15_10_IRQn;
   }
 
   [[nodiscard]] uint32_t HalPull() const {
     return pull_ == Pull::kUp     ? GPIO_PULLUP
            : pull_ == Pull::kDown ? GPIO_PULLDOWN
-                                 : GPIO_NOPULL;
+                                  : GPIO_NOPULL;
   }
 
   interface::PinName pin_;
